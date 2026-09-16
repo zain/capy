@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.woff2 binary
+bun.lock linguist-generated=true
+packages/backend/convex/_generated/* linguist-generated=true
+apps/web/src/env.ts linguist-generated=true

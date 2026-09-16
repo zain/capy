@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible problem with synthetic data.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "For security vulnerabilities, use private reporting in SECURITY.md. Never attach a real cap table, environment file, or credentials here."
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0, a commit SHA, or hosted capyinc.com
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation
+      options:
+        - Hosted at capyinc.com
+        - Self-hosted
+        - Local development
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal synthetic example and the expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and redacted logs
+      description: Browser, OS, Bun/Node versions, and relevant errors. Remove company data and secrets.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: This report contains no customer records, credentials, private documents, or invitation links.
+          required: true

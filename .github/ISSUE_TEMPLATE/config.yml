@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup and usage questions
+    url: https://github.com/zain/capy/discussions
+    about: Ask the community about running or using Capy.
+  - name: Report a security vulnerability privately
+    url: https://github.com/zain/capy/security/advisories/new
+    about: Do not post vulnerabilities or credentials in public issues.
+  - name: Private account or migration help
+    url: mailto:hello@capyinc.com
+    about: Contact the team before sharing private records.

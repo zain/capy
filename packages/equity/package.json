@@ -1,0 +1,16 @@
+{
+  "name": "@capy/equity",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./import": "./src/import.ts",
+    "./modeling": "./src/modeling.ts",
+    "./billing": "./src/billing.ts"
+  },
+  "dependencies": {
+    "decimal.js": "^10.6.0",
+    "zod": "catalog:"
+  }
+}

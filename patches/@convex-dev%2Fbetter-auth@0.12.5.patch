@@ -1,0 +1,52 @@
+diff --git a/dist/react/index.d.ts b/dist/react/index.d.ts
+index 652857c519c97b92f4819cbb8f25bea33be20982..c3bb00e1ed41a0a13dad4980716d64f77214891c 100644
+--- a/dist/react/index.d.ts
++++ b/dist/react/index.d.ts
+@@ -1,15 +1,14 @@
+ import type { PropsWithChildren, ReactNode } from "react";
+ import type { AuthTokenFetcher } from "convex/browser";
+ import type { FunctionReference } from "convex/server";
+-import type { BetterAuthClientPlugin } from "better-auth";
+ import type { createAuthClient } from "better-auth/react";
+ import type { convexClient, crossDomainClient } from "../client/plugins/index.js";
+ import type { EmptyObject } from "convex-helpers";
+ type CrossDomainClient = ReturnType<typeof crossDomainClient>;
+ type ConvexClient = ReturnType<typeof convexClient>;
+-type PluginsWithCrossDomain = (CrossDomainClient | ConvexClient | BetterAuthClientPlugin)[];
+-type PluginsWithoutCrossDomain = (ConvexClient | BetterAuthClientPlugin)[];
+-type AuthClientWithPlugins<Plugins extends PluginsWithCrossDomain | PluginsWithoutCrossDomain> = ReturnType<typeof createAuthClient<BetterAuthClientPlugin & {
++type PluginsWithCrossDomain = (CrossDomainClient | ConvexClient)[];
++type PluginsWithoutCrossDomain = ConvexClient[];
++type AuthClientWithPlugins<Plugins extends PluginsWithCrossDomain | PluginsWithoutCrossDomain> = ReturnType<typeof createAuthClient<{
+     plugins: Plugins;
+ }>>;
+ export type AuthClient = AuthClientWithPlugins<PluginsWithCrossDomain> | AuthClientWithPlugins<PluginsWithoutCrossDomain>;
+diff --git a/src/react/index.tsx b/src/react/index.tsx
+index dc10909a67009570ca00ea399828cd2775f6a561..dcab43eebb1ed9df5b920de5c303234994b5c192 100644
+--- a/src/react/index.tsx
++++ b/src/react/index.tsx
+@@ -8,7 +8,6 @@ import {
+   useQuery,
+ } from "convex/react";
+ import type { FunctionReference } from "convex/server";
+-import type { BetterAuthClientPlugin } from "better-auth";
+ import type { createAuthClient } from "better-auth/react";
+ import type {
+   convexClient,
+@@ -21,14 +20,13 @@ type ConvexClient = ReturnType<typeof convexClient>;
+ type PluginsWithCrossDomain = (
+   | CrossDomainClient
+   | ConvexClient
+-  | BetterAuthClientPlugin
+ )[];
+-type PluginsWithoutCrossDomain = (ConvexClient | BetterAuthClientPlugin)[];
++type PluginsWithoutCrossDomain = ConvexClient[];
+ type AuthClientWithPlugins<
+   Plugins extends PluginsWithCrossDomain | PluginsWithoutCrossDomain,
+ > = ReturnType<
+   typeof createAuthClient<
+-    BetterAuthClientPlugin & {
++    {
+       plugins: Plugins;
+     }
+   >

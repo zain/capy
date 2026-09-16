@@ -1,0 +1,82 @@
+{
+  "name": "capy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source cap table management for founders.",
+  "homepage": "https://capyinc.com",
+  "bugs": {
+    "url": "https://github.com/zain/capy/issues"
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zain/capy.git"
+  },
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "zod": "^4.5.4",
+      "typescript": "^6.0.3",
+      "@types/node": "^26.4.1",
+      "varlock": "1.18.0",
+      "lucide-react": "^1.41.0",
+      "next-themes": "^0.4.6",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "sonner": "^2.0.8",
+      "tailwindcss": "^4.3.3",
+      "convex": "^1.45.0",
+      "better-auth": "1.6.33",
+      "@convex-dev/better-auth": "^0.12.5",
+      "@types/react": "^19.2.18",
+      "@types/react-dom": "^19.2.7"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vp run -r dev",
+    "build": "vp run -r build",
+    "check-types": "vp run --filter web build && vp run -r check-types",
+    "check": "vp check && bun run check-types",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "staged": "vp staged",
+    "hooks:setup": "vp config",
+    "dev:web": "vp run --filter web dev:bare",
+    "dev:server": "vp run --filter @capy/backend dev",
+    "dev:setup": "vp run --filter @capy/backend dev:setup",
+    "deploy": "bun run --cwd packages/backend deploy && bun run deploy:web",
+    "env:generate": "varlock codegen --path ./apps/web/",
+    "postinstall": "varlock codegen --path ./apps/web/",
+    "deploy:web": "vp run --filter @capy/infra deploy",
+    "test": "vp run --filter web test"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@capy/config": "workspace:*",
+    "@cloudflare/workers-types": "^5.20260906.1",
+    "@types/node": "catalog:",
+    "rolldown": "1.2.7",
+    "typescript": "catalog:",
+    "varlock": "catalog:",
+    "vite-plus": "0.3.1"
+  },
+  "overrides": {
+    "hono": "4.13.8",
+    "uuid": "11.1.1",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.1"
+  },
+  "engines": {
+    "bun": ">=1.3.14",
+    "node": ">=24 <25"
+  },
+  "packageManager": "bun@1.3.14",
+  "patchedDependencies": {
+    "@convex-dev/better-auth@0.12.5": "patches/@convex-dev%2Fbetter-auth@0.12.5.patch"
+  }
+}

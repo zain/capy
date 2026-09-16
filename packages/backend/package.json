@@ -1,0 +1,25 @@
+{
+  "name": "@capy/backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "AGPL-3.0-only",
+  "author": "",
+  "scripts": {
+    "dev": "convex dev",
+    "dev:setup": "convex dev --configure --until-success",
+    "deploy": "convex deploy --cmd \"bun ../../scripts/build-production.ts\" --cmd-url-env-var-name VITE_CONVEX_URL",
+    "check-types": "tsc --noEmit -p convex"
+  },
+  "dependencies": {
+    "@capy/equity": "workspace:*",
+    "@convex-dev/better-auth": "catalog:",
+    "better-auth": "catalog:",
+    "convex": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@capy/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

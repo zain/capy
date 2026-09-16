@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /reserve
+Disallow: /success
+Sitemap: https://capyinc.com/sitemap.xml

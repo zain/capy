@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a concrete workflow improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the workflow and what gets in your way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the outcome you want, including an example using synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or current workaround
+  - type: checkboxes
+    id: roadmap
+    attributes:
+      label: Existing work
+      options:
+        - label: I checked the roadmap and existing issues.
+          required: true

@@ -1,0 +1,24 @@
+name = "capy"
+main = "worker.ts"
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2026-09-01"
+
+routes = [
+  { pattern = "capyinc.com", custom_domain = true },
+  { pattern = "www.capyinc.com", custom_domain = true },
+]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "none"
+run_worker_first = true
+
+[vars]
+STRIPE_PRICE_ID = "price_1UG1uaLsj6FeHM5GdWOKb6R0"
+TRIAL_END = "1796749200" # 2026-12-08T17:00:00Z (noon ET), the day Pulley shuts down
+SITE_URL = "https://capyinc.com"
+POSTHOG_TOKEN = "phc_sx8YqfMiJF8ouePv9sTwfRRpLW8HiH9MEwBdbaVhNWrh" # Public browser analytics key, not a secret. gitleaks:allow
+
+# Secret (set with `npx wrangler secret put STRIPE_SECRET_KEY`):
+#   STRIPE_SECRET_KEY  restricted key with write access to Checkout Sessions

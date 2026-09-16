@@ -1,0 +1,9 @@
+{
+  "name": "@capy/infra",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "deploy": "bun run --cwd ../../apps/web deploy:worker"
+  }
+}
