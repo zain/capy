@@ -84,7 +84,12 @@ function Home() {
         <div className="landing-footer-note">
           <LandingCopy source={landingFooter || "Built for founders."} />
         </div>
-        <a className="landing-footer-github" href="https://github.com/zain/capy">
+        <a
+          className="landing-footer-github"
+          href="https://github.com/zain/capy"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <img src="/github.svg" width="16" height="16" alt="" />
           <span>GitHub</span>
         </a>
