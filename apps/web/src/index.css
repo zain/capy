@@ -101,10 +101,12 @@ body {
 }
 .landing-footer-github img {
   display: inline-block;
-  width: 1em;
-  height: 1em;
+  width: 0.85em;
+  height: 0.85em;
   margin-right: 0.4em;
-  vertical-align: -0.125em;
+  opacity: 0.8;
+  /* Center the mark on the visible letters, rather than the line box. */
+  vertical-align: -0.065em;
 }
 .landing-footer-github:focus-visible {
   outline: 2px solid currentColor;
