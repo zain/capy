@@ -25,6 +25,8 @@ First public source release.
 
 ### Security
 
+- Removed repeated-whitespace backtracking from Pulley company-title parsing, with regression coverage for malformed titles.
+
 - Updated Better Auth to 1.6.33 and pinned patched Hono and UUID resolutions. UUID 11 retains the CommonJS `v4` interface used by ExcelJS; workbook tests verify the integration.
 - Added secret scanning, dependency auditing, CodeQL analysis, and scheduled dependency update checks.
 

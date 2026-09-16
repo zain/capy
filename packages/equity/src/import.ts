@@ -59,7 +59,9 @@ export function parsePulleySheets(
   const summary = sheets.find((s) => normal(s.name) === "summary");
   const ownership = sheets.find((s) => normal(s.name) === "ownership");
   const name =
-    text(summary?.rows[0]?.[0]).replace(/\s+Summary Capitalization Table$/i, "") ||
+    text(summary?.rows[0]?.[0])
+      .replace(/\sSummary Capitalization Table$/i, "")
+      .trimEnd() ||
     text(ownership?.rows[0]?.[0]) ||
     fallbackName;
   const dateText = text(summary?.rows[1]?.[0]);
