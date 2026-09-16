@@ -97,6 +97,16 @@ function fixture(): ImportSheet[] {
   ];
 }
 describe("Pulley detailed export", () => {
+  it("strips the summary title with mixed case and repeated whitespace", () => {
+    const sheets = fixture();
+    sheets[0]!.rows[0]![0] = "  Example \t  sUmMaRy Capitalization Table  ";
+    expect(parsePulleySheets(sheets).name).toBe("Example");
+  });
+  it("rejects an oversized nonmatching title without repeated whitespace backtracking", () => {
+    const sheets = fixture();
+    sheets[0]!.rows[0]![0] = `Example${" ".repeat(64_000)}Unrelated title`;
+    expect(() => parsePulleySheets(sheets)).toThrow();
+  });
   it("stops unmatched restricted stock before it can silently change ownership", () => {
     const sheets = fixture();
     sheets[3]!.rows[3]![4] = "RSA";
