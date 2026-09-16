@@ -53,6 +53,12 @@ The root manifest pins patched Hono and UUID resolutions to avoid older transiti
 
 The Bun patch in `patches/` fixes the Convex adapter's React client types for Better Auth 1.6.22 and later ([upstream issue #420](https://github.com/get-convex/better-auth/issues/420)). It uses the concrete Convex/cross-domain plugin types rather than a generic plugin union that makes session data infer as `never`. The patch changes types only, not authentication behavior. Remove it when the adapter ships a compatible fix; rerun the build and verify sign-in/session refresh when updating either authentication package.
 
+## Dependency maintenance
+
+Dependabot checks routine updates monthly and groups them into one app-dependency PR and one GitHub Actions PR, with at most one open version-update PR per ecosystem. Major version upgrades are reviewed manually. Security updates have separate groups and are not delayed by the monthly version-update schedule or its PR limit; the minor/patch allow rule does not exclude security fixes. See [GitHub's configuration reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).
+
+The root `vite` override resolves to Vite+'s `@voidzero-dev/vite-plus-core`. A standalone Vite manifest bump does not change the installed runtime. Upgrade Vite+ and its matching override together when adopting a new toolchain release.
+
 ## Tests
 
 Tests live in `apps/web/src/server`. They cover synthetic Pulley workbook parsing and export round trips, decimal totals, SAFE modeling, vesting boundaries, URL redirects, hosted/self-hosted billing policy, and Stripe signature verification. Tests run without live Stripe, Cloudflare, or Convex credentials.

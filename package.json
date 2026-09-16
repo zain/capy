@@ -61,7 +61,7 @@
     "@capy/config": "workspace:*",
     "@cloudflare/workers-types": "^5.20260906.1",
     "@types/node": "catalog:",
-    "rolldown": "1.2.7",
+    "rolldown": "1.2.8",
     "typescript": "catalog:",
     "varlock": "catalog:",
     "vite-plus": "0.3.1"

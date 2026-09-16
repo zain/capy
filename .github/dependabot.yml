@@ -3,16 +3,31 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 1
+    # Major upgrades need a deliberate review. Security fixes remain eligible.
+    allow:
+      - dependency-name: "*"
+        update-types: [version-update:semver-minor, version-update:semver-patch]
     groups:
       actions:
+        applies-to: version-updates
+        patterns: ["*"]
+      action-security-fixes:
+        applies-to: security-updates
         patterns: ["*"]
   - package-ecosystem: bun
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 1
+    allow:
+      - dependency-name: "*"
+        update-types: [version-update:semver-minor, version-update:semver-patch]
     groups:
       patch-and-minor:
-        update-types: [minor, patch]
+        applies-to: version-updates
+        patterns: ["*"]
+      dependency-security-fixes:
+        applies-to: security-updates
+        patterns: ["*"]
