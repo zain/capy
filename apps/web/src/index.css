@@ -83,7 +83,7 @@ body {
 }
 .public-page .landing-footer {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 1.5em;
   margin-top: 3.333em;
@@ -94,20 +94,17 @@ body {
   margin: 0;
 }
 .public-page .landing-footer-github {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
+  display: inline-block;
   flex-shrink: 0;
+  white-space: nowrap;
   text-decoration: none;
 }
 .landing-footer-github img {
-  display: block;
+  display: inline-block;
   width: 1em;
   height: 1em;
-}
-.landing-footer-github span {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+  margin-right: 0.4em;
+  vertical-align: -0.125em;
 }
 .landing-footer-github:focus-visible {
   outline: 2px solid currentColor;

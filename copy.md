@@ -8,11 +8,9 @@ Lightweight and DIY: issue a SAFE, grant options, or model your next round. Look
 
 It’s open source, so you can self-host and own your data. Export your cap table to Excel any time.
 
-We have clear pricing that keeps the project alive, the [code is on GitHub](https://github.com/zain/capy), and our [roadmap is public](https://github.com/zain/capy/blob/main/ROADMAP.md). If you want to contribute, PRs are welcome.
+We have clear pricing that keeps the project alive, the code is on GitHub, and our roadmap is public. If you want to contribute, PRs are welcome.
 
 One plan: $600/yr, unlimited stakeholders, no contracts. Free until Dec 8.
-
-Hosted on Cloudflare and Convex.
 
 [Import your Pulley cap table in one click →](/preview)
 

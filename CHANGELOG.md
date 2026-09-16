@@ -4,6 +4,8 @@ User-visible changes and upgrade notes are recorded here. Release tags identify 
 
 ## Unreleased
 
+- Aligned the landing-page footer text, simplified its GitHub link, and removed body source links and hosting details.
+
 - Added a Capy favicon beside the landing-page title and a compact GitHub source link in the footer, with mobile and dark-mode styling.
 
 ## 0.1.0 — 2026-09-16
