@@ -18,3 +18,5 @@ The dependency graph and exact versions are recorded in `bun.lock`. Distributed 
 | Decimal.js, Zod, and ExcelJS           | Arithmetic, validation, and workbooks           | https://github.com/MikeMcl/decimal.js · https://github.com/colinhacks/zod · https://github.com/exceljs/exceljs |
 
 README screenshots are of Capy's own interface using fictional demo data. Pulley and Carta names identify products for migration and comparison; no affiliation or endorsement is implied. The repository does not include private Pulley exports, account screenshots, or Corgi collaboration artwork.
+
+The GitHub mark in `apps/web/public/github.svg` comes from [GitHub's favicon](https://github.githubassets.com/favicons/favicon.svg) and identifies the source repository. GitHub retains its trademark rights.

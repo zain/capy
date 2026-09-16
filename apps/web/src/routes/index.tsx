@@ -4,6 +4,7 @@ import copy from "../../../../copy.md?raw";
 import { PublicPage } from "@/components/public/page";
 
 const title = copy.trim().split("\n")[0]!.replace(/^# /, "");
+const [landingBody, landingFooter] = copy.split("\n---\n");
 const description =
   "We were Pulley customers too. Capy does one thing well: your cap table. Open source, exportable, $600/yr, free until Dec 8.";
 export const Route = createFileRoute("/")({
@@ -61,7 +62,13 @@ export function LandingCopy({ source }: { source: string }) {
     closeList();
     if (!line) continue;
     const key = blocks.length;
-    if (line.startsWith("# ")) blocks.push(<h1 key={key}>{inline(line.slice(2))}</h1>);
+    if (line.startsWith("# "))
+      blocks.push(
+        <h1 className="landing-title" key={key}>
+          <img className="landing-brand-icon" src="/favicon-32.png" width="20" height="20" alt="" />
+          <span>{inline(line.slice(2))}</span>
+        </h1>,
+      );
     else if (line.startsWith("## ")) blocks.push(<h2 key={key}>{inline(line.slice(3))}</h2>);
     else if (line === "---") blocks.push(<hr key={key} />);
     else blocks.push(<p key={key}>{inline(line)}</p>);
@@ -72,7 +79,16 @@ export function LandingCopy({ source }: { source: string }) {
 function Home() {
   return (
     <PublicPage variant="landing" analytics>
-      <LandingCopy source={copy} />
+      <LandingCopy source={landingBody!} />
+      <footer className="landing-footer">
+        <div className="landing-footer-note">
+          <LandingCopy source={landingFooter || "Built for founders."} />
+        </div>
+        <a className="landing-footer-github" href="https://github.com/zain/capy">
+          <img src="/github.svg" width="16" height="16" alt="" />
+          <span>GitHub</span>
+        </a>
+      </footer>
     </PublicPage>
   );
 }
