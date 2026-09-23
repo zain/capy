@@ -22,6 +22,16 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_subscription", ["subscriptionId"]),
   billingEvents: defineTable({ eventId: v.string() }).index("by_event", ["eventId"]),
+  pulleyAccessRequests: defineTable({
+    name: v.string(),
+    email: v.string(),
+    company: v.string(),
+    method: v.union(v.literal("password"), v.literal("invite")),
+    pulleyEmail: v.optional(v.string()),
+    // RSA-OAEP ciphertext from the browser. Only the offline private key can read it.
+    encryptedPassword: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  }),
 
   portalGrants: defineTable({
     companyId: v.id("companies"),
