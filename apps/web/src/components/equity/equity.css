@@ -1098,6 +1098,70 @@
 .eq-auth-field > p {
   font-size: 12px;
 }
+.eq-auth-field textarea {
+  min-height: 88px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.eq-auth-note {
+  color: #66726b;
+  line-height: 1.6;
+}
+.eq-auth-error {
+  color: #b42318;
+  font-size: 13px;
+}
+.eq-callout {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--eq-green);
+  border-radius: 6px;
+  background: #eef4f1;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.eq-callout strong {
+  font-weight: 600;
+}
+.eq-choice-group {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.eq-choice-group legend {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 550;
+}
+.eq-choice,
+.eq-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.eq-choice {
+  padding: 12px;
+  border: 1px solid var(--eq-border);
+  border-radius: 6px;
+}
+.eq-choice:has(input:checked) {
+  border-color: var(--eq-green);
+}
+.eq-choice input,
+.eq-consent input {
+  margin-top: 3px;
+  accent-color: var(--eq-green);
+}
+.eq-choice small {
+  display: block;
+  color: #66726b;
+  font-size: 12px;
+}
 .eq-auth-submit {
   width: 100%;
   height: 44px;

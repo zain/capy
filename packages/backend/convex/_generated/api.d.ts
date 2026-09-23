@@ -15,6 +15,7 @@ import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as portal from "../portal.js";
 import type * as privateData from "../privateData.js";
+import type * as pulleyAccess from "../pulleyAccess.js";
 import type * as records from "../records.js";
 import type * as stripe from "../stripe.js";
 
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   portal: typeof portal;
   privateData: typeof privateData;
+  pulleyAccess: typeof pulleyAccess;
   records: typeof records;
   stripe: typeof stripe;
 }>;

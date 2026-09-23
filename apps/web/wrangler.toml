@@ -20,5 +20,10 @@ TRIAL_END = "1796749200" # 2026-12-08T17:00:00Z (noon ET), the day Pulley shuts 
 SITE_URL = "https://capyinc.com"
 POSTHOG_TOKEN = "phc_sx8YqfMiJF8ouePv9sTwfRRpLW8HiH9MEwBdbaVhNWrh" # Public browser analytics key, not a secret. gitleaks:allow
 
-# Secret (set with `npx wrangler secret put STRIPE_SECRET_KEY`):
+# Operator alerts through Email Routing. Sends only to verified destination addresses.
+[[send_email]]
+name = "ALERT_EMAIL"
+
+# Secrets (set with `npx wrangler secret put <NAME>`):
 #   STRIPE_SECRET_KEY  restricted key with write access to Checkout Sessions
+#   ALERT_EMAIL_TO     verified Email Routing destination that receives operator alerts

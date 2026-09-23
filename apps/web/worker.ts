@@ -1,7 +1,8 @@
 import start from "@tanstack/react-start/server-entry";
 import { type CheckoutEnv } from "./src/server/checkout";
+import { type PulleyAccessEnv } from "./src/server/pulley-access";
 
-export interface Env extends CheckoutEnv {
+export interface Env extends CheckoutEnv, PulleyAccessEnv {
   ASSETS: Fetcher;
 }
 
