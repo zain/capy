@@ -25,13 +25,23 @@ async function user(ctx: QueryCtx | MutationCtx) {
   if (!u) throw new ConvexError("Sign in to access your company.");
   return u;
 }
+export type AuthUser = Awaited<ReturnType<typeof user>>;
 export async function member(
   ctx: QueryCtx | MutationCtx,
   companyId: Id<"companies">,
   write = false,
   editing = write,
 ) {
-  const u = await user(ctx);
+  return await memberAs(ctx, await user(ctx), companyId, write, editing);
+}
+/** Access check for a known user, so internal operator functions can act on their behalf. */
+export async function memberAs(
+  ctx: QueryCtx | MutationCtx,
+  u: AuthUser,
+  companyId: Id<"companies">,
+  write = false,
+  editing = write,
+) {
   const m = await ctx.db
     .query("memberships")
     .withIndex("by_company_user", (q) => q.eq("companyId", companyId).eq("userId", u._id))
@@ -80,191 +90,211 @@ export const companies = query({
     return companies.filter((c) => c?.activeImport);
   },
 });
+const startArgs = {
+  filename: v.string(),
+  metadata: v.any(),
+  people: v.number(),
+  securities: v.number(),
+  companyId: v.optional(v.id("companies")),
+};
 export const startImport = mutation({
+  args: startArgs,
+  handler: async (ctx, args) => await startImportAs(ctx, await user(ctx), args),
+});
+export async function startImportAs(
+  ctx: MutationCtx,
+  u: AuthUser,
   args: {
-    filename: v.string(),
-    metadata: v.any(),
-    people: v.number(),
-    securities: v.number(),
-    companyId: v.optional(v.id("companies")),
+    filename: string;
+    metadata: unknown;
+    people: number;
+    securities: number;
+    companyId?: Id<"companies">;
   },
-  handler: async (ctx, args) => {
-    const u = await user(ctx);
-    await requireEditing(ctx, u._id);
-    const data = parse(importSchema, { ...args.metadata, stakeholders: [], securities: [] });
-    if (!z.iso.date().safeParse(data.asOf).success)
-      throw new ConvexError("Set a valid export date.");
+) {
+  await requireEditing(ctx, u._id);
+  const data = parse(importSchema, {
+    ...(args.metadata as object),
+    stakeholders: [],
+    securities: [],
+  });
+  if (!z.iso.date().safeParse(data.asOf).success) throw new ConvexError("Set a valid export date.");
+  if (
+    !Number.isInteger(args.people) ||
+    !Number.isInteger(args.securities) ||
+    args.people < 1 ||
+    args.securities < 1 ||
+    args.people > 5000 ||
+    args.securities > 5000
+  )
+    throw new ConvexError(
+      "Imports currently support up to 5,000 stakeholders and 5,000 securities.",
+    );
+  let companyId = args.companyId;
+  if (companyId) {
+    await memberAs(ctx, u, companyId, true);
+    const company = await ctx.db.get(companyId);
+    const prior = company?.activeImport ? await ctx.db.get(company.activeImport) : null;
     if (
-      !Number.isInteger(args.people) ||
-      !Number.isInteger(args.securities) ||
-      args.people < 1 ||
-      args.securities < 1 ||
-      args.people > 5000 ||
-      args.securities > 5000
+      !prior ||
+      prior.filename ||
+      prior.people ||
+      prior.securities ||
+      prior.metadata.classes.length ||
+      prior.metadata.plans.length
     )
       throw new ConvexError(
-        "Imports currently support up to 5,000 stakeholders and 5,000 securities.",
+        "This company already has equity records. Import into a new company to keep those records intact.",
       );
-    let companyId = args.companyId;
-    if (companyId) {
-      await member(ctx, companyId, true);
-      const company = await ctx.db.get(companyId);
-      const prior = company?.activeImport ? await ctx.db.get(company.activeImport) : null;
-      if (
-        !prior ||
-        prior.filename ||
-        prior.people ||
-        prior.securities ||
-        prior.metadata.classes.length ||
-        prior.metadata.plans.length
-      )
-        throw new ConvexError(
-          "This company already has equity records. Import into a new company to keep those records intact.",
-        );
-    } else {
-      companyId = await ctx.db.insert("companies", {
-        name: data.name,
-        ownerId: u._id,
-        profile: {},
-      });
-      await ctx.db.insert("memberships", { companyId, userId: u._id, role: "admin" });
-    }
-    const importId = await ctx.db.insert("imports", {
-      companyId,
-      filename: args.filename.slice(0, 300),
-      status: "staging",
-      metadata: data,
-      expectedPeople: args.people,
-      expectedSecurities: args.securities,
-      people: 0,
-      securities: 0,
+  } else {
+    companyId = await ctx.db.insert("companies", {
+      name: data.name,
+      ownerId: u._id,
+      profile: {},
     });
-    return { companyId, importId };
-  },
-});
+    await ctx.db.insert("memberships", { companyId, userId: u._id, role: "admin" });
+  }
+  const importId = await ctx.db.insert("imports", {
+    companyId,
+    filename: args.filename.slice(0, 300),
+    status: "staging",
+    metadata: data,
+    expectedPeople: args.people,
+    expectedSecurities: args.securities,
+    people: 0,
+    securities: 0,
+  });
+  return { companyId, importId };
+}
 export const appendImport = mutation({
   args: { importId: v.id("imports"), stakeholders: v.any(), securities: v.any() },
-  handler: async (ctx, args) => {
-    const imp = await ctx.db.get(args.importId);
-    if (!imp) throw new ConvexError("Import not found.");
-    await member(ctx, imp.companyId, true);
-    const people = parse(z.array(stakeholderSchema).max(50), args.stakeholders);
-    const securities = parse(z.array(securitySchema).max(50), args.securities);
-    let addedPeople = 0,
-      addedSecurities = 0;
-    for (const p of people) {
-      const existing = await ctx.db
-        .query("stakeholders")
-        .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", p.key))
-        .unique();
-      if (existing) {
-        if (canonical(existing.data) !== canonical(p))
-          throw new ConvexError("Conflicting stakeholder in retried import.");
-        continue;
-      }
-      if (imp.status === "complete") throw new ConvexError("This import is already complete.");
-      await ctx.db.insert("stakeholders", {
-        companyId: imp.companyId,
-        importId: imp._id,
-        key: p.key,
-        data: p,
-        revision: 1,
-      });
-      addedPeople++;
-    }
-    for (const s of securities) {
-      const existing = await ctx.db
-        .query("securities")
-        .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.key))
-        .unique();
-      if (existing) {
-        if (canonical(existing.data) !== canonical(s))
-          throw new ConvexError("Conflicting security in retried import.");
-        continue;
-      }
-      if (imp.status === "complete") throw new ConvexError("This import is already complete.");
-      const person = await ctx.db
-        .query("stakeholders")
-        .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.stakeholderKey))
-        .unique();
-      if (!person) throw new ConvexError("Import stakeholders before their securities.");
-      await ctx.db.insert("securities", {
-        companyId: imp.companyId,
-        importId: imp._id,
-        key: s.key,
-        stakeholderKey: s.stakeholderKey,
-        data: s,
-        revision: 1,
-      });
-      addedSecurities++;
-    }
-    if (
-      imp.people + addedPeople > imp.expectedPeople ||
-      imp.securities + addedSecurities > imp.expectedSecurities
-    )
-      throw new ConvexError("Import record counts exceeded the preview.");
-    await ctx.db.patch(imp._id, {
-      people: imp.people + addedPeople,
-      securities: imp.securities + addedSecurities,
-    });
-  },
+  handler: async (ctx, args) => await appendImportAs(ctx, await user(ctx), args),
 });
+export async function appendImportAs(
+  ctx: MutationCtx,
+  u: AuthUser,
+  args: { importId: Id<"imports">; stakeholders: unknown; securities: unknown },
+) {
+  const imp = await ctx.db.get(args.importId);
+  if (!imp) throw new ConvexError("Import not found.");
+  await memberAs(ctx, u, imp.companyId, true);
+  const people = parse(z.array(stakeholderSchema).max(50), args.stakeholders);
+  const securities = parse(z.array(securitySchema).max(50), args.securities);
+  let addedPeople = 0,
+    addedSecurities = 0;
+  for (const p of people) {
+    const existing = await ctx.db
+      .query("stakeholders")
+      .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", p.key))
+      .unique();
+    if (existing) {
+      if (canonical(existing.data) !== canonical(p))
+        throw new ConvexError("Conflicting stakeholder in retried import.");
+      continue;
+    }
+    if (imp.status === "complete") throw new ConvexError("This import is already complete.");
+    await ctx.db.insert("stakeholders", {
+      companyId: imp.companyId,
+      importId: imp._id,
+      key: p.key,
+      data: p,
+      revision: 1,
+    });
+    addedPeople++;
+  }
+  for (const s of securities) {
+    const existing = await ctx.db
+      .query("securities")
+      .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.key))
+      .unique();
+    if (existing) {
+      if (canonical(existing.data) !== canonical(s))
+        throw new ConvexError("Conflicting security in retried import.");
+      continue;
+    }
+    if (imp.status === "complete") throw new ConvexError("This import is already complete.");
+    const person = await ctx.db
+      .query("stakeholders")
+      .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.stakeholderKey))
+      .unique();
+    if (!person) throw new ConvexError("Import stakeholders before their securities.");
+    await ctx.db.insert("securities", {
+      companyId: imp.companyId,
+      importId: imp._id,
+      key: s.key,
+      stakeholderKey: s.stakeholderKey,
+      data: s,
+      revision: 1,
+    });
+    addedSecurities++;
+  }
+  if (
+    imp.people + addedPeople > imp.expectedPeople ||
+    imp.securities + addedSecurities > imp.expectedSecurities
+  )
+    throw new ConvexError("Import record counts exceeded the preview.");
+  await ctx.db.patch(imp._id, {
+    people: imp.people + addedPeople,
+    securities: imp.securities + addedSecurities,
+  });
+}
 export const completeImport = mutation({
   args: { importId: v.id("imports") },
-  handler: async (ctx, { importId }) => {
-    const imp = await ctx.db.get(importId);
-    if (!imp) throw new ConvexError("Import not found.");
-    const u = await member(ctx, imp.companyId, true);
-    if (imp.status === "complete") return imp.companyId;
-    if (imp.people !== imp.expectedPeople || imp.securities !== imp.expectedSecurities)
-      throw new ConvexError("Import is incomplete. Retry the remaining records.");
-    const securities = await ctx.db
-      .query("securities")
-      .withIndex("by_import", (q) => q.eq("importId", imp._id))
-      .collect();
-    for (const cls of (imp.metadata as EquityImport).classes) {
-      const outstanding = sum(
-        securities
-          .filter((s) => s.data.kind === "share" && s.data.className === cls.name)
-          .map((s) => s.data.outstanding),
-      );
-      if (cls.reportedOutstanding !== null && !D(outstanding).eq(cls.reportedOutstanding))
-        throw new ConvexError(
-          `${cls.name}: imported shares do not match the summary. Upload a complete export.`,
-        );
-    }
-    await ctx.db.patch(imp._id, { status: "complete" });
-    const company = await ctx.db.get(imp.companyId);
-    if (company?.activeImport && company.activeImport !== imp._id) {
-      const prior = await ctx.db.get(company.activeImport);
-      const oldPerson = await ctx.db
-        .query("stakeholders")
-        .withIndex("by_import", (q) => q.eq("importId", company.activeImport!))
-        .first();
-      const oldSecurity = await ctx.db
-        .query("securities")
-        .withIndex("by_import", (q) => q.eq("importId", company.activeImport!))
-        .first();
-      if (
-        prior?.filename ||
-        oldPerson ||
-        oldSecurity ||
-        prior?.metadata.classes.length ||
-        prior?.metadata.plans.length
-      )
-        throw new ConvexError(
-          "This company changed while importing. Its records were kept intact. Contact us to finish your import.",
-        );
-    }
-    await ctx.db.patch(imp.companyId, { activeImport: imp._id, name: imp.metadata.name });
-    await ctx.db.insert("activity", {
-      companyId: imp.companyId,
-      actor: u.name || u.email,
-      description: `Imported ${imp.securities} securities and ${imp.people} stakeholders from ${imp.filename}`,
-    });
-    return imp.companyId;
-  },
+  handler: async (ctx, { importId }) => await completeImportAs(ctx, await user(ctx), importId),
 });
+export async function completeImportAs(ctx: MutationCtx, u: AuthUser, importId: Id<"imports">) {
+  const imp = await ctx.db.get(importId);
+  if (!imp) throw new ConvexError("Import not found.");
+  await memberAs(ctx, u, imp.companyId, true);
+  if (imp.status === "complete") return imp.companyId;
+  if (imp.people !== imp.expectedPeople || imp.securities !== imp.expectedSecurities)
+    throw new ConvexError("Import is incomplete. Retry the remaining records.");
+  const securities = await ctx.db
+    .query("securities")
+    .withIndex("by_import", (q) => q.eq("importId", imp._id))
+    .collect();
+  for (const cls of (imp.metadata as EquityImport).classes) {
+    const outstanding = sum(
+      securities
+        .filter((s) => s.data.kind === "share" && s.data.className === cls.name)
+        .map((s) => s.data.outstanding),
+    );
+    if (cls.reportedOutstanding !== null && !D(outstanding).eq(cls.reportedOutstanding))
+      throw new ConvexError(
+        `${cls.name}: imported shares do not match the summary. Upload a complete export.`,
+      );
+  }
+  await ctx.db.patch(imp._id, { status: "complete" });
+  const company = await ctx.db.get(imp.companyId);
+  if (company?.activeImport && company.activeImport !== imp._id) {
+    const prior = await ctx.db.get(company.activeImport);
+    const oldPerson = await ctx.db
+      .query("stakeholders")
+      .withIndex("by_import", (q) => q.eq("importId", company.activeImport!))
+      .first();
+    const oldSecurity = await ctx.db
+      .query("securities")
+      .withIndex("by_import", (q) => q.eq("importId", company.activeImport!))
+      .first();
+    if (
+      prior?.filename ||
+      oldPerson ||
+      oldSecurity ||
+      prior?.metadata.classes.length ||
+      prior?.metadata.plans.length
+    )
+      throw new ConvexError(
+        "This company changed while importing. Its records were kept intact. Contact us to finish your import.",
+      );
+  }
+  await ctx.db.patch(imp.companyId, { activeImport: imp._id, name: imp.metadata.name });
+  await ctx.db.insert("activity", {
+    companyId: imp.companyId,
+    actor: u.name || u.email,
+    description: `Imported ${imp.securities} securities and ${imp.people} stakeholders from ${imp.filename}`,
+  });
+  return imp.companyId;
+}
 export const company = query({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {

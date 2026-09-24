@@ -1241,3 +1241,14 @@
     margin: 24px;
   }
 }
+.eq-file-list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.eq-file-list .eq-text-button {
+  text-align: left;
+  white-space: normal;
+}

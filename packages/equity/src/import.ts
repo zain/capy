@@ -1,4 +1,5 @@
-import { D, sum, totals, importSchema } from "./index";
+import { D, isConvertible, sum, totals, importSchema } from "./index";
+import { canProjectVesting } from "./modeling";
 import type { EquityImport, Security, Stakeholder, ShareClass, EquityPlan } from "./index";
 
 export type Cell = string | number | null;
@@ -156,7 +157,34 @@ export function parsePulleySheets(
       }
     }
   }
+  const vestingRows: {
+    certificate: string;
+    className: string;
+    person: string;
+    date: string;
+    shares: string;
+  }[] = [];
   for (const sheet of sheets) {
+    // Capy exports write dated vesting events to their own sheet.
+    const vesting = table(sheet, ["Certificate ID", "Vest Date", "Shares Vesting"]);
+    if (vesting) {
+      sheetInfo.push({ name: sheet.name, rows: vesting.rows.length, kind: "vesting" });
+      for (const { fields: f, row } of vesting.rows) {
+        const certificate = text(f["Certificate ID"]);
+        if (!certificate) continue;
+        const date = text(f["Vest Date"]);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+          throw new Error(`${sheet.name} row ${row}: enter the vest date as YYYY-MM-DD.`);
+        vestingRows.push({
+          certificate,
+          className: text(f["Share Class"]),
+          person: text(f["Stakeholder Name"]).toLocaleLowerCase("en-US"),
+          date,
+          shares: decimal(f["Shares Vesting"], `${sheet.name} row ${row}, Shares Vesting`, true)!,
+        });
+      }
+      continue;
+    }
     const stock = table(sheet, ["Certificate ID", "Stakeholder Name", "Shares Outstanding"]);
     const award = table(sheet, ["Certificate ID", "Stakeholder Name", "Grant Type", "Outstanding"]);
     const convertible = table(sheet, ["Convertible ID", "Stakeholder", "Principal Outstanding"]);
@@ -307,8 +335,20 @@ export function parsePulleySheets(
         `${c.name}: security rows total ${actual} outstanding shares, but the summary reports ${c.reportedOutstanding}. Check that the export is complete.`,
       );
   }
+  for (const e of vestingRows) {
+    const holder = people.get(e.person)?.key;
+    for (const s of securities)
+      if (
+        s.certificate === e.certificate &&
+        (!e.className || s.className === e.className) &&
+        (!holder || s.stakeholderKey === holder)
+      )
+        (s.vestEvents ??= []).push({ date: e.date, shares: e.shares });
+  }
   const keys = new Set<string>();
-  for (const s of securities) {
+  // Pulley lists each restricted stock award twice: as stock and as a plan grant. The award
+  // rows were matched to their stock above and are excluded from totals, so skip them here.
+  for (const s of securities.filter((s) => s.kind !== "rsa")) {
     const id = `${s.className}:${s.certificate}`;
     if (keys.has(id))
       warnings.push(
@@ -316,9 +356,17 @@ export function parsePulleySheets(
       );
     keys.add(id);
   }
-  if (securities.some((s) => /custom/i.test(s.vestingSchedule)))
+  const unprojectable = securities.filter(
+    (s) =>
+      !isConvertible(s) &&
+      s.kind !== "rsa" &&
+      s.vestingSchedule &&
+      D(s.outstanding).gt(0) &&
+      !canProjectVesting(s),
+  );
+  if (unprojectable.length)
     warnings.push(
-      "Custom vesting schedules include balances but not individual events. Import the underlying schedule before projecting future vesting.",
+      `${unprojectable.map((s) => s.certificate).join(", ")} use vesting schedules Capy can’t project from this export. Their vested balances as of the export are imported, but future vesting needs each schedule’s individual events.`,
     );
   warnings.push(
     contactSheet

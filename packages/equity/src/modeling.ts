@@ -9,7 +9,9 @@ export function modelRound(data: EquityImport, preMoney: string, investment: str
     throw new Error("Enter a positive valuation and a nonnegative investment.");
   const convertibles = data.securities.filter((s) => isConvertible(s) && D(s.outstanding).gt(0));
   const specs = convertibles.map((s) => {
-    const cap = D(s.fields["Valuation Cap"] || 0),
+    // Pulley writes "Uncapped" for SAFEs without a cap; any non-numeric cap means no cap.
+    const capText = s.fields["Valuation Cap"] || "",
+      cap = /^\d/.test(capText.trim()) ? D(capText.replace(/,/g, "")) : D(0),
       discount = D(s.fields["Conversion Discount"] || 0).div(100),
       type = s.fields["Conversion Type"];
     if (discount.lt(0) || discount.gte(1))
@@ -105,17 +107,36 @@ function completedMonths(start: string, end: string) {
   if (b.getUTCDate() < Math.min(a.getUTCDate(), monthEnd)) months--;
   return Math.max(0, months);
 }
+const monthlySchedule =
+  /^1\/(\d+)(?:th)? monthly(?:,| w\/)?\s*(no cliff|25% vest at 12 month cliff|1 year cliff)$/;
+/** Whether future vesting can be computed from events, a supported schedule, or a fully vested balance. */
+export function canProjectVesting(s: Security) {
+  return (
+    Boolean(s.vestEvents?.length) ||
+    (s.vested !== null && D(s.vested).gte(s.outstanding)) ||
+    (Boolean(s.vestingStart) && monthlySchedule.test(s.vestingSchedule.toLowerCase()))
+  );
+}
+function vestedFromEvents(s: Security, target: string) {
+  const vested = s.vestEvents!.reduce(
+    (total, e) => (e.date <= target ? total.plus(e.shares) : total),
+    D(0),
+  );
+  const exercised = D(s.fields["Exercised/Settled"] || 0);
+  return Decimal.min(s.outstanding, Decimal.max(0, vested.minus(exercised))).toFixed();
+}
 export function projectedVested(s: Security, asOf: string, target: string): string | null {
+  if (s.vestEvents?.length) return vestedFromEvents(s, target);
   asOf = s.balanceAsOf || asOf;
   if (target === asOf) return s.vested;
-  if (s.vested === null || !s.vestingStart || !asOf || target < asOf) return null;
+  if (s.vested === null || !asOf || target < asOf) return null;
+  // Vesting never reverses, so a fully vested balance stays fully vested.
+  if (D(s.vested).gte(s.outstanding)) return s.outstanding;
+  if (!s.vestingStart) return null;
   const termination = s.fields["Termination Date"];
   if (termination && termination <= asOf) return s.vested;
   const end = termination && termination < target ? termination : target;
-  const text = s.vestingSchedule.toLowerCase();
-  const match = text.match(
-    /^1\/(\d+)(?:th)? monthly(?:,| w\/)?\s*(no cliff|25% vest at 12 month cliff|1 year cliff)$/,
-  );
+  const match = s.vestingSchedule.toLowerCase().match(monthlySchedule);
   if (!match) return null;
   const duration = Number(match[1]),
     cliff = match[2] === "no cliff" ? 0 : 12;

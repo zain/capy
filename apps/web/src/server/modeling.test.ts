@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { modelRound, projectedVested } from "@capy/equity/modeling";
+import { canProjectVesting, modelRound, projectedVested } from "@capy/equity/modeling";
 import type { EquityImport, Security } from "@capy/equity";
 const stock: Security = {
   key: "stock",
@@ -149,5 +149,56 @@ describe("vesting projections", () => {
       ),
     ).toBeNull();
     expect(projectedVested(grant, "2026-01-01", "2025-01-01")).toBeNull();
+  });
+});
+
+describe("dated vesting events", () => {
+  const award: Security = {
+    ...stock,
+    issued: "300",
+    outstanding: "300",
+    vested: "100",
+    vestingSchedule: "Founder schedule",
+    vestEvents: [
+      { date: "2026-01-01", shares: "100" },
+      { date: "2027-01-01", shares: "100" },
+      { date: "2028-01-01", shares: "100" },
+    ],
+  };
+  it("sums the events on or before the target date", () => {
+    expect(projectedVested(award, "2026-09-15", "2026-12-31")).toBe("100");
+    expect(projectedVested(award, "2026-09-15", "2027-01-01")).toBe("200");
+    expect(canProjectVesting(award)).toBe(true);
+  });
+  it("nets exercised shares and never exceeds the outstanding balance", () => {
+    const option: Security = {
+      ...award,
+      kind: "option",
+      outstanding: "250",
+      fields: { "Exercised/Settled": "50" },
+    };
+    expect(projectedVested(option, "2026-09-15", "2027-01-01")).toBe("150");
+    expect(projectedVested(option, "2026-09-15", "2030-01-01")).toBe("250");
+  });
+  it("keeps a fully vested balance vested under an unsupported schedule", () => {
+    const vested = { ...stock, vestingSchedule: "Custom - See Share for details" };
+    expect(projectedVested(vested, "2026-09-15", "2030-01-01")).toBe("9000000");
+    expect(canProjectVesting(vested)).toBe(true);
+    expect(canProjectVesting({ ...vested, vested: "10" })).toBe(false);
+  });
+});
+describe("SAFE caps", () => {
+  it("treats a text cap such as Uncapped as no cap", () => {
+    const s: Security = {
+      ...stock,
+      key: "uncapped",
+      certificate: "SAFE-9",
+      stakeholderKey: "investor",
+      kind: "safe",
+      issued: "100000",
+      outstanding: "100000",
+      fields: { "Valuation Cap": "Uncapped", "Conversion Type": "Post-Money" },
+    };
+    expect(() => modelRound(data([s]), "20000000", "5000000")).not.toThrow();
   });
 });

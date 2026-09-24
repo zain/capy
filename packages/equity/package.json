@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./import": "./src/import.ts",
     "./modeling": "./src/modeling.ts",
-    "./billing": "./src/billing.ts"
+    "./billing": "./src/billing.ts",
+    "./pulley": "./src/pulley-api.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",

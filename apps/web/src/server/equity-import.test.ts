@@ -107,6 +107,14 @@ describe("Pulley detailed export", () => {
     sheets[0]!.rows[0]![0] = `Example${" ".repeat(64_000)}Unrelated title`;
     expect(() => parsePulleySheets(sheets)).toThrow();
   });
+  it("does not flag a restricted stock award and its stock row as duplicates", () => {
+    const sheets = fixture();
+    sheets[2]!.rows[4]![0] = "CS-2";
+    sheets[3]!.rows.push(["CS-1", "Founder", 300, 300, "RSA", "Common", "Employee Plan", 300]);
+    const data = parsePulleySheets(sheets);
+    expect(data.securities.filter((s) => s.certificate === "CS-1")).toHaveLength(2);
+    expect(data.warnings.some((w) => w.includes("Duplicate"))).toBe(false);
+  });
   it("stops unmatched restricted stock before it can silently change ownership", () => {
     const sheets = fixture();
     sheets[3]!.rows[3]![4] = "RSA";
@@ -126,6 +134,21 @@ describe("Pulley detailed export", () => {
       email: "founder@example.com",
       fields: { Address: "1 Main Street" },
     });
+  });
+  it("round-trips dated vesting events", async () => {
+    const data = parsePulleySheets(fixture());
+    const option = data.securities.find((s) => s.kind === "option")!;
+    option.vestEvents = [
+      { date: "2026-01-01", shares: "25" },
+      { date: "2027-01-01", shares: "25" },
+    ];
+    const buffer = await exportCapTableWorkbook(data);
+    const imported = await readPulleyWorkbook(buffer as ArrayBuffer, "capy.xlsx");
+    expect(imported.securities.find((s) => s.kind === "option")?.vestEvents).toEqual(
+      option.vestEvents,
+    );
+    expect(imported.securities.filter((s) => s.vestEvents).length).toBe(1);
+    expect(imported.warnings.some((w) => w.includes("was not recognized"))).toBe(false);
   });
   it("imports supplemental contacts without SSNs", () => {
     const contacts = parseStakeholderSheets([

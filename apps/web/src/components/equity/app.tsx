@@ -45,7 +45,8 @@ import type { Column } from "./ui";
 import { ConfigurationForm, SecurityActions, SecurityForm } from "./workflows";
 import { ContactImport } from "./contact-import";
 import { ImportHelp } from "./import-help";
-import { DataRoom, recordSections, RecordsPage } from "./records";
+import { DataRoom, LinkedDocuments, recordSections, RecordsPage } from "./records";
+import { projectedVested } from "@capy/equity/modeling";
 import {
   Compliance,
   Fundraising,
@@ -65,7 +66,9 @@ const date = (value: string) => {
     ? value
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
-const money = (value: string | null) => (value === null ? "—" : "$" + number(value, 2));
+// Imported caps can be text such as "Uncapped", which is shown as written.
+const money = (value: string | null) =>
+  value === null ? "—" : /^\d/.test(value.trim()) ? "$" + number(value, 2) : value;
 function CompanyLink({ page, children }: { page: string; children: ReactNode }) {
   const { company } = useCompany();
   return (
@@ -522,45 +525,40 @@ function CompanyPage({ path }: { path: string }) {
 }
 function Dashboard() {
   const user = useQuery(api.auth.getCurrentUser);
-  const { data, totals: t, activity } = useCompany();
-  const colors = ["#1b4c40", "#a9d6bc", "#dce7e1", "#dcd9ee", "#7e9b8c", "#ededed", "#d5dbd7"];
+  const { company, data, totals: t, activity } = useCompany();
+  const documents = useQuery(api.records.list, { companyId: company._id, kind: "document" });
+  // Pulley writes relationships as "Ex Employee", "EX_EMPLOYEE" or "Ex-Employee", so compare letters only.
+  const relationship = (p: Stakeholder) => p.relationship.toLowerCase().replace(/[^a-z]/g, "");
+  const groups: [string, string, string[]][] = [
+    ["Founders", "#1b4c40", ["founder"]],
+    ["Employees", "#a9d6bc", ["employee"]],
+    ["Former Employees", "#dce7e1", ["exemployee", "formeremployee"]],
+    ["Advisors", "#dcd9ee", ["advisor", "boardmember"]],
+    ["Consultants", "#b9cbbf", ["consultant"]],
+    ["Investors", "#7e9b8c", ["investor"]],
+    ["Others", "#c9d3cd", ["other"]],
+  ];
+  const grouped = new Set(groups.flatMap(([, , kinds]) => kinds));
+  const sharesOf = (people: Stakeholder[]) =>
+    sum(people.map((p) => stakeholderShares(data.securities, p.key)));
   const breakdown = [
-    "Founder",
-    "Employee",
-    "Ex-Employee",
-    "Advisor",
-    "Investor",
-    "Available",
-    "Unknown",
-  ].map((label, i) => ({
-    label:
-      label === "Ex-Employee"
-        ? "Former Employees"
-        : label === "Founder"
-          ? "Founders"
-          : label === "Employee"
-            ? "Employees"
-            : label === "Advisor"
-              ? "Advisors"
-              : label === "Investor"
-                ? "Investors"
-                : label,
-    color: colors[i],
-    shares:
-      label === "Available"
-        ? t.available
-        : sum(
-            data.stakeholders
-              .filter((p) =>
-                label === "Unknown"
-                  ? !["Founder", "Employee", "Ex-Employee", "Advisor", "Investor"].includes(
-                      p.relationship,
-                    )
-                  : p.relationship === label,
-              )
-              .map((p) => stakeholderShares(data.securities, p.key)),
-          ),
-  }));
+    ...groups.map(([label, color, kinds]) => ({
+      label,
+      color,
+      shares: sharesOf(data.stakeholders.filter((p) => kinds.includes(relationship(p)))),
+    })),
+    { label: "Available", color: "#ededed", shares: t.available },
+    {
+      label: "Unknown",
+      color: "#d5dbd7",
+      shares: sharesOf(data.stakeholders.filter((p) => !grouped.has(relationship(p)))),
+    },
+  ];
+  const holders = new Set(
+    data.securities.filter((s) => D(s.outstanding).gt(0)).map((s) => s.stakeholderKey),
+  );
+  const missingEmails = data.stakeholders.some((p) => holders.has(p.key) && !p.email);
+  const hasDocuments = !!documents?.length;
   let cursor = 0;
   const gradient = breakdown
     .map((b) => {
@@ -711,19 +709,25 @@ function Dashboard() {
               {data.sheets.length ? "Review your import" : "Import your cap table"}
             </CompanyLink>
             <p>
-              {data.sheets.length
-                ? "See what came over from Pulley and get help with a fuller import."
-                : "Bring your existing records over whenever you’re ready."}
+              {!data.sheets.length
+                ? "Bring your existing records over whenever you’re ready."
+                : hasDocuments
+                  ? "See what came over from Pulley."
+                  : "See what came over from Pulley and get help with a fuller import."}
             </p>
           </div>
-          <div className="eq-reminder">
-            <CompanyLink page="stakeholders">Complete stakeholder profiles</CompanyLink>
-            <p>Add emails and contact information for your employees and investors.</p>
-          </div>
-          <div className="eq-reminder">
-            <CompanyLink page="data_room">Upload company documents</CompanyLink>
-            <p>Keep your signed agreements and supporting documents together.</p>
-          </div>
+          {missingEmails && (
+            <div className="eq-reminder">
+              <CompanyLink page="stakeholders">Complete stakeholder profiles</CompanyLink>
+              <p>Add emails and contact information for your employees and investors.</p>
+            </div>
+          )}
+          {documents && !hasDocuments && (
+            <div className="eq-reminder">
+              <CompanyLink page="data_room">Upload company documents</CompanyLink>
+              <p>Keep your signed agreements and supporting documents together.</p>
+            </div>
+          )}
           <div className="eq-reminder">
             <CompanyLink page="profile">Edit Company Profile</CompanyLink>
             <p>Keep your company details up to date.</p>
@@ -784,6 +788,12 @@ function securityColumns(data: CompanyView, kind = "all"): Column<Security>[] {
       {
         key: "principal",
         label: "Principal",
+        value: (s) => s.issued,
+        render: (s) => money(s.issued),
+      },
+      {
+        key: "outstanding",
+        label: "Outstanding",
         value: (s) => s.outstanding,
         render: (s) => money(s.outstanding),
       },
@@ -1239,6 +1249,56 @@ function DetailList({ title, rows }: { title: string; rows: [string, ReactNode][
     </section>
   );
 }
+const today = () => new Date().toISOString().slice(0, 10);
+const kindTitles: Record<Security["kind"], string> = {
+  share: "Shares",
+  option: "Options",
+  rsa: "Restricted Stock Award",
+  rsu: "RSUs",
+  warrant: "Warrant",
+  piu: "Profit Interest",
+  safe: "SAFE",
+  note: "Convertible Note",
+};
+function VestingEvents({ security }: { security: Security }) {
+  const now = today();
+  let total = D(0);
+  const rows = security.vestEvents!.map((e, i) => {
+    total = total.plus(e.shares);
+    return { ...e, key: String(i), cumulative: total.toFixed() };
+  });
+  const vested = rows.filter((e) => e.date <= now).length;
+  return (
+    <details className="eq-section">
+      <summary>
+        Vesting events ({vested} vested, {rows.length - vested} upcoming)
+      </summary>
+      <DataTable
+        rows={rows}
+        columns={[
+          { key: "date", label: "Date", value: (e) => e.date, render: (e) => date(e.date) },
+          {
+            key: "shares",
+            label: "Shares",
+            value: (e) => e.shares,
+            render: (e) => number(e.shares),
+          },
+          {
+            key: "cumulative",
+            label: "Total Vested",
+            value: (e) => e.cumulative,
+            render: (e) => number(e.cumulative),
+          },
+          {
+            key: "status",
+            label: "Status",
+            value: (e) => (e.date <= now ? "Vested" : "Upcoming"),
+          },
+        ]}
+      />
+    </details>
+  );
+}
 function SecurityDetail({ securityKey }: { securityKey: string }) {
   const { data } = useCompany();
   const s = data.securities.find((s) => s.key === securityKey);
@@ -1247,7 +1307,8 @@ function SecurityDetail({ securityKey }: { securityKey: string }) {
   const convertible = isConvertible(s);
   const overview: [string, ReactNode][] = convertible
     ? [
-        ["Principal", money(s.outstanding)],
+        ["Principal", money(s.issued)],
+        ["Outstanding", money(s.outstanding)],
         ["Issued On", date(s.issuedOn)],
         ["Valuation Cap", money(s.fields["Valuation Cap"] || null)],
         ["Conversion Discount", s.fields["Conversion Discount"]],
@@ -1264,9 +1325,7 @@ function SecurityDetail({ securityKey }: { securityKey: string }) {
       ];
   return (
     <section className="eq-panel">
-      <PageHeader
-        title={`${s.certificate} ${convertible ? "SAFE" : s.kind === "share" ? "Shares" : "Options"}`}
-      >
+      <PageHeader title={`${s.certificate} ${kindTitles[s.kind]}`}>
         <span className="eq-badge">{s.status.toUpperCase()}</span>
         <SecurityActions securityKey={s.key} />
         <CompanyLink page={`issuance/${encodeURIComponent(s.key)}`}>
@@ -1342,11 +1401,18 @@ function SecurityDetail({ securityKey }: { securityKey: string }) {
                 "—"
               ),
             ],
+            ...(s.vestEvents?.length
+              ? ([["Vested Today", number(projectedVested(s, data.asOf, today()))]] as [
+                  string,
+                  ReactNode,
+                ][])
+              : []),
             ["Schedule Name", s.vestingSchedule],
             ["Start Date", date(s.vestingStart)],
           ]}
         />
       )}
+      {!convertible && !!s.vestEvents?.length && <VestingEvents security={s} />}
       <DetailList
         title="Additional Information"
         rows={[
@@ -1367,14 +1433,16 @@ function SecurityDetail({ securityKey }: { securityKey: string }) {
       </details>
       <section className="eq-section">
         <h3>Attachments</h3>
-        <p className="eq-muted" style={{ marginBottom: 16 }}>
-          Document names are included in your export. To bring over the files,{" "}
-          <a href="mailto:hello@capyinc.com?subject=Full%20Pulley%20import">
-            request a full import
-          </a>{" "}
-          or upload them to the Data Room.
-        </p>
-        {s.fields.Documents && <p>{s.fields.Documents}</p>}
+        <LinkedDocuments certificate={s.certificate}>
+          <p className="eq-muted" style={{ marginBottom: 16 }}>
+            Document names are included in your export. To bring over the files,{" "}
+            <a href="mailto:hello@capyinc.com?subject=Full%20Pulley%20import">
+              request a full import
+            </a>{" "}
+            or upload them to the Data Room.
+          </p>
+          {s.fields.Documents && <p>{s.fields.Documents}</p>}
+        </LinkedDocuments>
         <CompanyLink page="data_room">Open Data Room</CompanyLink>
       </section>
     </section>

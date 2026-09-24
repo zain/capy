@@ -13,6 +13,7 @@ import type * as billing from "../billing.js";
 import type * as equity from "../equity.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as operator from "../operator.js";
 import type * as portal from "../portal.js";
 import type * as privateData from "../privateData.js";
 import type * as pulleyAccess from "../pulleyAccess.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   equity: typeof equity;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  operator: typeof operator;
   portal: typeof portal;
   privateData: typeof privateData;
   pulleyAccess: typeof pulleyAccess;
