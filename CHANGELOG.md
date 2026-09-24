@@ -1,12 +1,33 @@
 # Changelog
 
-User-visible changes and upgrade notes are recorded here. Release tags identify source snapshots; they do not imply a security audit. Capy uses semantic versions, with breaking changes called out while the project is in the `0.x` series.
+User-visible changes and upgrade notes are recorded here. Release tags identify source snapshots; they do not imply a security audit. Capy uses semantic versions. From 1.0.0, breaking changes to data, imports, exports or self-hosting configuration increase the major version and are called out here.
 
 ## Unreleased
 
-- Aligned the landing-page footer text, optically balanced the GitHub mark, simplified its link, and removed body source links and hosting details.
+## 1.0.0 — 2026-09-24
 
-- Added a Capy favicon beside the landing-page title and a compact GitHub source link in the footer that opens in a new tab, with mobile and dark-mode styling.
+Capy is generally available. This release brings full Pulley migrations: everything Pulley holds, not only its Excel export, and a cap table that matches Pulley’s own numbers.
+
+### Added
+
+- Full Pulley imports. Founders can request one at `/pulley-import`, either by inviting hello@capyinc.com as a Pulley admin or by sharing a sign-in. Shared passwords are encrypted in the browser, readable only with an offline key, and deleted after the import or within 30 days.
+- Assisted import tooling for the Capy team. It brings over stakeholder emails and addresses, dated vesting events, signed documents linked to each security and SAFE, board approvals, 409A valuations and board members. Before loading, it checks every company, class, plan, stakeholder, security and SAFE figure against Pulley’s numbers, including future vesting.
+- Dated vesting events. Custom schedules now project exactly, and security pages list each event as vested or upcoming.
+- Security pages list their linked documents.
+- Excel exports include a Vesting Events sheet, and imports read it back, so custom vesting survives an export and re-import.
+- A Capy favicon beside the landing-page title and a GitHub source link in the footer.
+
+### Fixed
+
+- SAFEs with a text valuation cap such as “Uncapped” no longer break the SAFE list, SAFE pages or round modeling.
+- Converted SAFEs show their original principal alongside the outstanding balance, instead of $0.
+- The dashboard ownership chart recognizes Pulley relationships such as “Ex Employee”, “Consultant” and “Other”, and matches Pulley’s breakdown.
+- Restricted stock awards are labeled as awards, not options.
+- A restricted stock award and its stock row are no longer reported as duplicate certificates.
+- The import warning now lists every vesting schedule Capy can’t project, not only schedules labeled “custom”.
+- Fully vested securities stay fully vested in projections, whatever their schedule.
+- Dashboard reminders to add emails or upload documents disappear once that’s done.
+- Aligned the landing-page footer text and optically balanced the GitHub mark.
 
 ## 0.1.0 — 2026-09-16
 
