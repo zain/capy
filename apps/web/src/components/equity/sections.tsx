@@ -383,7 +383,11 @@ export function Compliance() {
                   value: (s) =>
                     data.stakeholders.find((p) => p.key === s.stakeholderKey)?.name || "—",
                 },
-                { key: "filing", label: "Filing Status", value: () => "—" },
+                {
+                  key: "filing",
+                  label: "Filing Status",
+                  value: (s) => s.fields["83(b) Election"] || "—",
+                },
               ]}
             />
           </>

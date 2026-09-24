@@ -2,7 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { projectedVested } from "@capy/equity/modeling";
 import {
   enrichFromPulley,
+  pulleyAuditCsv,
   pulleyDocuments,
+  pulleyProfile,
   pulleyRecords,
   type PulleySnapshot,
 } from "@capy/equity/pulley";
@@ -124,6 +126,7 @@ const api: PulleySnapshot = {
       stakeholder_type: "INDIVIDUAL",
       relationship: "FOUNDER",
       termination_date: null,
+      comment: "Holds through a family trust",
     },
     {
       id: 2,
@@ -178,6 +181,53 @@ const api: PulleySnapshot = {
       fmv_share_classes: [{ preference_type: "COMMON", price_per_share: "0.25" }],
     },
   ],
+  company: {
+    name: "Example",
+    legal_name: "Example, Inc.",
+    incorporation_state: "DE",
+    incorporation_date: "2025-01-15T00:00:00Z",
+    address_details: {
+      address: "1 Main St",
+      city: "Dover",
+      state: "DE",
+      zip_code: "19901",
+      country: "US",
+    },
+  },
+  library: [
+    { id: 1, filename: "Stock agreement.pdf", relation: "securities", relationId: 11, type: null },
+    { id: 2, filename: "83b.pdf", relation: "securities", relationId: 11, type: "83b" },
+    {
+      id: 3,
+      filename: "SAFE.pdf",
+      relation: "convertibles",
+      relationId: 21,
+      type: "generated_safe",
+    },
+    { id: 4, filename: "Charter.pdf", relation: "share_classes", relationId: 7, type: null },
+    { id: 5, filename: "Deck.pdf", relation: "custom", relationId: 900, type: null },
+    { id: 6, filename: "Not downloaded.pdf", relation: "custom", relationId: 900, type: null },
+  ],
+  folders: [{ id: 900, name: "Pitch Deck" }],
+  certificates: [{ id: 11, certificate_id: "CS-1", stakeholder_company_name: "Ada Founder" }],
+  auditLog: [
+    {
+      timestamp: "2025-09-24T12:00:00+00:00",
+      action: "U",
+      table_name: "security",
+      security: { id: 11 },
+      changed_fields: { price_per_share: "0.001", updated_at: "x" },
+      acting_user: { name: "Ada Founder", email: "ada@example.com" },
+    },
+    {
+      timestamp: "2025-09-01T12:00:00+00:00",
+      action: "I",
+      table_name: "stakeholder_company",
+      stakeholder_company: { view: { name: "Seed Fund, LP" } },
+      changed_fields: null,
+      acting_user: null,
+    },
+  ],
 };
 
 describe("Pulley API enrichment", () => {
@@ -216,16 +266,43 @@ describe("Pulley API enrichment", () => {
     );
     expect(records.find((r) => r.kind === "contact")?.data.Role).toBe("Board member, Director");
   });
-  it("links documents to their certificates and data room categories", () => {
-    const docs = pulleyDocuments(api, [
-      { id: 1, filename: "Stock agreement.pdf", owners: ["security:11"] },
-      { id: 2, filename: "SAFE.pdf", owners: ["convertible:21"] },
-      { id: 41, filename: "Consent.pdf", owners: ["board_approval:31", "board_consent:31"] },
+  it("files every downloaded data room file and certificate", () => {
+    const docs = pulleyDocuments(api, {
+      library: new Map([1, 2, 3, 4, 5].map((id) => [id, `documents/${id}.pdf`])),
+      certificates: new Map([[11, "certificates/11.pdf"]]),
+    });
+    expect(docs.map((d) => [d.source, d.category, d.certificates])).toEqual([
+      ["file:1", "Stock & Options", ["CS-1"]],
+      ["file:2", "83(b) Elections", ["CS-1"]],
+      ["file:3", "SAFEs", ["SAFE-1"]],
+      ["file:4", "Corporate Records", []],
+      ["file:5", "Pitch Deck", []],
+      ["certificate:11", "Stock Certificates", ["CS-1"]],
     ]);
-    expect(docs.map((d) => [d.category, d.certificates])).toEqual([
-      ["Stock & Options", ["CS-1"]],
-      ["SAFEs", ["SAFE-1"]],
-      ["Board Approvals", []],
-    ]);
+    expect(docs.at(-1)?.filename).toBe("Stock Certificate CS-1 - Ada Founder.pdf");
+  });
+  it("carries stakeholder notes and filed 83(b) elections", () => {
+    expect(data.stakeholders.find((s) => s.key === "person-1")?.fields?.Notes).toBe(
+      "Holds through a family trust",
+    );
+    expect(data.securities.find((s) => s.key === share.key)?.fields["83(b) Election"]).toBe(
+      "Filed",
+    );
+  });
+  it("builds the company profile", () => {
+    expect(pulleyProfile(api.company!)).toEqual({
+      "Legal Name": "Example, Inc.",
+      "State of Incorporation": "DE",
+      "Incorporation Date": "2025-01-15",
+      Address: "1 Main St, Dover, DE 19901, US",
+    });
+  });
+  it("writes the audit log oldest first, naming records and quoting commas", () => {
+    const [header, first, second] = pulleyAuditCsv(api).split("\n");
+    expect(header).toBe("Date (UTC),Action,Record Type,Record,Changes,By");
+    expect(first).toBe('2025-09-01 12:00:00,Created,Stakeholder Company,"Seed Fund, LP",,');
+    expect(second).toContain("Updated,Security,CS-1,");
+    expect(second).toContain('""price_per_share"":""0.001""');
+    expect(second).not.toContain("updated_at");
   });
 });
