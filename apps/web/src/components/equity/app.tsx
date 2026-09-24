@@ -44,6 +44,7 @@ import { PortalManager, MyPortals } from "./portal";
 import type { Column } from "./ui";
 import { ConfigurationForm, SecurityActions, SecurityForm } from "./workflows";
 import { ContactImport } from "./contact-import";
+import { ChangePassword } from "./change-password";
 import { ImportHelp } from "./import-help";
 import { DataRoom, LinkedDocuments, recordSections, RecordsPage } from "./records";
 import { projectedVested } from "@capy/equity/modeling";
@@ -171,6 +172,7 @@ function Topbar({ companyId }: { companyId?: string }) {
   const companies = useQuery(api.equity.companies),
     user = useQuery(api.auth.getCurrentUser);
   const navigate = useNavigate();
+  const [changingPassword, setChangingPassword] = useState(false);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
   return (
@@ -246,6 +248,14 @@ function Topbar({ companyId }: { companyId?: string }) {
               <Link to="/billing">Billing</Link>
               <a href="mailto:hello@capyinc.com">Contact support</a>
               <button
+                onClick={() => {
+                  setMenu(false);
+                  setChangingPassword(true);
+                }}
+              >
+                Change password
+              </button>
+              <button
                 onClick={async () => {
                   // Leave authenticated queries before ending their session.
                   await clearPendingImport().catch(() => {});
@@ -265,6 +275,7 @@ function Topbar({ companyId }: { companyId?: string }) {
           )}
         </div>
       </div>
+      {changingPassword && <ChangePassword onClose={() => setChangingPassword(false)} />}
     </header>
   );
 }
