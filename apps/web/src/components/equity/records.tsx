@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useConvex, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import type { Id } from "@capy/backend/convex/_generated/dataModel";
@@ -225,6 +226,53 @@ export function RecordsPage({ section, spec: custom }: { section?: string; spec?
     </section>
   );
 }
+async function openDocument(convex: ReturnType<typeof useConvex>, record: RecordItem) {
+  const url = await convex.query(api.records.download, { id: record._id });
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.download = record.title;
+  a.click();
+}
+/** Data room files linked to a certificate, or `children` when there are none. */
+export function LinkedDocuments({
+  certificate,
+  children,
+}: {
+  certificate: string;
+  children?: ReactNode;
+}) {
+  const { company } = useCompany();
+  const records = useQuery(api.records.list, { companyId: company._id, kind: "document" });
+  const convex = useConvex();
+  const [error, setError] = useState("");
+  const files = (records || []).filter((r) =>
+    String(r.data.certificates || "")
+      .split(",")
+      .map((c) => c.trim())
+      .includes(certificate),
+  );
+  if (!files.length) return <>{children}</>;
+  return (
+    <>
+      {error && <p className="eq-error">{error}</p>}
+      <ul className="eq-file-list">
+        {files.map((r) => (
+          <li key={r._id}>
+            <button
+              className="eq-text-button"
+              onClick={() => void openDocument(convex, r).catch((e) => setError(String(e)))}
+            >
+              {r.title}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 export function DataRoom({
   title = "Data Room",
   category = "Company",
@@ -263,15 +311,7 @@ export function DataRoom({
   }
   async function download(record: RecordItem) {
     try {
-      const url = await convex.query(api.records.download, { id: record._id });
-      if (url) {
-        const a = document.createElement("a");
-        a.href = url;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.download = record.title;
-        a.click();
-      }
+      await openDocument(convex, record);
     } catch (e) {
       setError(String(e));
     }

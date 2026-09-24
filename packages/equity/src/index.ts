@@ -46,6 +46,11 @@ export const securitySchema = z.object({
   sourceSheet: z.string(),
   sourceRow: z.number().int().nonnegative(),
   fields: fieldsSchema,
+  // Dated vesting events from the source system. When present, they replace schedule parsing.
+  vestEvents: z
+    .array(z.object({ date: z.iso.date(), shares: decimalSchema }))
+    .max(5000)
+    .optional(),
 });
 export const planSchema = z.object({
   name: z.string(),

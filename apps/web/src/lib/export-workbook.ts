@@ -153,6 +153,21 @@ export async function exportCapTableWorkbook(data: EquityImport) {
         Status: s.status,
       })),
   );
+  // Dated vesting events, so custom schedules survive an export and re-import.
+  table(
+    "Vesting Events",
+    data.securities
+      .filter((s) => s.kind !== "rsa" && s.vestEvents?.length)
+      .flatMap((s) =>
+        s.vestEvents!.map((e) => ({
+          "Certificate ID": s.certificate,
+          "Share Class": s.className,
+          "Stakeholder Name": person(s),
+          "Vest Date": e.date,
+          "Shares Vesting": e.shares,
+        })),
+      ),
+  );
   table(
     "Stakeholders",
     data.stakeholders.map((p) => ({
