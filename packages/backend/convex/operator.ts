@@ -68,6 +68,7 @@ export const uploadUrls = internalMutation({
 });
 
 const documentSchema = z.object({
+  source: z.string().max(200).optional(),
   storageId: z.string(),
   filename: z.string().min(1).max(300),
   category: z.string().min(1).max(100),
@@ -91,6 +92,7 @@ export const attachDocuments = internalMutation({
           storageId,
           category: f.category,
           certificates: f.certificates.join(", "),
+          ...(f.source ? { source: f.source } : {}),
           size: String(meta.size),
           contentType: meta.contentType || "",
           uploadedBy: importedBy,
@@ -149,8 +151,63 @@ export const companySnapshot = internalQuery({
       ...imp!.metadata,
       stakeholders: stakeholders.map((s) => s.data),
       securities: securities.map((s) => s.data),
-      records: records.map((r) => ({ kind: r.kind, title: r.title, status: r.status })),
+      records: records.map((r) => ({
+        kind: r.kind,
+        title: r.title,
+        status: r.status,
+        source: r.data?.source ?? null,
+      })),
     };
+  },
+});
+
+/** Fills company profile fields that are still blank. */
+export const setProfile = internalMutation({
+  args: { companyId: v.id("companies"), profile: v.any() },
+  handler: async (ctx, { companyId, profile }) => {
+    const values = parse(z.record(z.string().max(100), z.string().max(3000)), profile);
+    const company = await ctx.db.get(companyId);
+    if (!company) throw new ConvexError("Company not found.");
+    const merged = { ...company.profile };
+    for (const [k, value] of Object.entries(values)) if (!merged[k]) merged[k] = value;
+    await ctx.db.patch(companyId, { profile: merged });
+  },
+});
+
+const fieldUpdates = z
+  .array(
+    z.object({ key: z.string(), fields: z.record(z.string().max(200), z.string().max(20000)) }),
+  )
+  .max(500);
+/** Adds fields to already imported stakeholders and securities, keeping existing values. */
+export const mergeFields = internalMutation({
+  args: { companyId: v.id("companies"), stakeholders: v.any(), securities: v.any() },
+  handler: async (ctx, args) => {
+    const company = await ctx.db.get(args.companyId);
+    if (!company?.activeImport) throw new ConvexError("This company has no completed import.");
+    let changed = 0;
+    for (const [table, updates] of [
+      ["stakeholders", parse(fieldUpdates, args.stakeholders)],
+      ["securities", parse(fieldUpdates, args.securities)],
+    ] as const)
+      for (const u of updates) {
+        const row = await ctx.db
+          .query(table)
+          .withIndex("by_import_key", (q) =>
+            q.eq("importId", company.activeImport!).eq("key", u.key),
+          )
+          .unique();
+        if (!row) throw new ConvexError(`No ${table} record ${u.key}.`);
+        const fields = { ...row.data.fields };
+        for (const [k, value] of Object.entries(u.fields)) if (!fields[k]) fields[k] = value;
+        await ctx.db.patch(row._id, { data: { ...row.data, fields }, revision: row.revision + 1 });
+        changed++;
+      }
+    await ctx.db.insert("activity", {
+      companyId: args.companyId,
+      actor: importedBy,
+      description: `Added details from Pulley to ${changed} records`,
+    });
   },
 });
 

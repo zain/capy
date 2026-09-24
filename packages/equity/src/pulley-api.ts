@@ -16,6 +16,16 @@ export interface PulleySnapshot {
   boardApprovals: Json[];
   boardMembers: Json[];
   valuations: Json[];
+  /** Company settings, for the Capy company profile. */
+  company?: Json;
+  /** Every file in Pulley's data room (the DocumentLibrary query's `fileUploads`). */
+  library?: Json[];
+  /** User-created data room folders. */
+  folders?: Json[];
+  /** Stock certificates Pulley issued. */
+  certificates?: Json[];
+  /** Pulley's audit log for the company. */
+  auditLog?: Json[];
 }
 export interface ImportRecord {
   kind: string;
@@ -24,7 +34,10 @@ export interface ImportRecord {
   data: Record<string, string>;
 }
 export interface ImportDocument {
-  fileId: number;
+  /** Stable source identifier, so a file is never uploaded twice. */
+  source: string;
+  /** Path to the file, relative to the company folder. */
+  file: string;
   filename: string;
   category: string;
   /** Certificate labels the file belongs to, for showing it on each security. */
@@ -88,6 +101,7 @@ export function enrichFromPulley(base: EquityImport, api: PulleySnapshot): Equit
           "Termination Type": words(p.termination_type),
           "Pulley ID": p.id,
         }),
+        ...(p.comment && !s.fields?.Notes ? { Notes: String(p.comment).trim() } : {}),
       },
     };
   });
@@ -106,6 +120,11 @@ export function enrichFromPulley(base: EquityImport, api: PulleySnapshot): Equit
         fields: present({ "Pulley ID": p.id, Notes: "Holds no securities in Pulley." }),
       });
 
+  const filed83b = new Set(
+    (api.library ?? [])
+      .filter((f) => f.relation === "securities" && f.type === "83b")
+      .map((f) => f.relationId),
+  );
   const pulleySecurities = new Map(api.securities.map((s) => [certificateOf(s), s]));
   const pulleyConvertibles = new Map(api.convertibles.map((c) => [certificateOf(c), c]));
   const securities = base.securities.map((s) => {
@@ -139,6 +158,7 @@ export function enrichFromPulley(base: EquityImport, api: PulleySnapshot): Equit
       fields: fill(s.fields, {
         "Board Approval Date": day(p.board_approval_date),
         "Acceptance Status": words(p.acceptance_status),
+        "83(b) Election": filed83b.has(p.id) ? "Filed" : "",
         "Pulley ID": p.id,
       }),
     };
@@ -255,34 +275,122 @@ export function pulleyRecords(api: PulleySnapshot, companyName: string): ImportR
   return records;
 }
 
-/** Groups Pulley file uploads into Capy data room categories and links them to certificates. */
+/** Company details for the Capy company profile. */
+export function pulleyProfile(company: Json): Record<string, string> {
+  const a = company.address_details ?? {};
+  return present({
+    "Legal Name": company.legal_name || company.name,
+    "State of Incorporation": company.incorporation_state,
+    "Incorporation Date": day(company.incorporation_date),
+    Address: [a.address, a.city, [a.state, a.zip_code].filter(Boolean).join(" "), a.country]
+      .filter(Boolean)
+      .join(", "),
+  });
+}
+
+/**
+ * Every data room file and stock certificate, filed into Capy data room categories and linked to
+ * the certificates they belong to. `files` maps Pulley file and security ids to downloaded paths.
+ */
 export function pulleyDocuments(
   api: PulleySnapshot,
-  files: { id: number; filename: string; owners: string[] }[],
+  files: { library: Map<number, string>; certificates: Map<number, string> },
 ): ImportDocument[] {
-  const certificates = new Map<string, string>([
-    ...api.securities.map((s) => [`security:${s.id}`, certificateOf(s)] as [string, string]),
-    ...api.securities.map(
-      (s) => [`security-history:${s.id}`, certificateOf(s)] as [string, string],
-    ),
-    ...api.convertibles.map((c) => [`convertible:${c.id}`, certificateOf(c)] as [string, string]),
-  ]);
-  return files.map((f) => {
-    const kinds = new Set(f.owners.map((o) => o.split(":")[0]));
-    const category = kinds.has("fmv")
-      ? "Valuation"
-      : kinds.has("board_approval") || kinds.has("board_consent")
-        ? "Board Approvals"
-        : kinds.has("convertible")
-          ? "SAFEs"
-          : "Stock & Options";
-    return {
-      fileId: f.id,
+  const securities = new Map(api.securities.map((s) => [s.id, certificateOf(s)]));
+  const convertibles = new Map(api.convertibles.map((c) => [c.id, certificateOf(c)]));
+  const folders = new Map((api.folders ?? []).map((f) => [f.id, String(f.name)]));
+  const categories: Record<string, string> = {
+    convertibles: "SAFEs",
+    board_approval: "Board Approvals",
+    fmv: "Valuation",
+    share_classes: "Corporate Records",
+    equity_plans: "Corporate Records",
+    document_group: "Form Documents",
+    stakeholder_company: "Stakeholders",
+    theme: "Branding",
+  };
+  const documents: ImportDocument[] = [];
+  for (const f of api.library ?? []) {
+    const file = files.library.get(f.id);
+    if (!file) continue;
+    const certificate =
+      f.relation === "securities"
+        ? securities.get(f.relationId)
+        : f.relation === "convertibles"
+          ? convertibles.get(f.relationId)
+          : undefined;
+    const category =
+      f.relation === "securities"
+        ? f.type === "83b"
+          ? "83(b) Elections"
+          : "Stock & Options"
+        : f.relation === "custom"
+          ? (folders.get(f.relationId) ?? "Company")
+          : (categories[f.relation] ?? "Company");
+    documents.push({
+      source: `file:${f.id}`,
+      file,
       filename: f.filename,
       category,
-      certificates: [
-        ...new Set(f.owners.map((o) => certificates.get(o)).filter((c): c is string => !!c)),
-      ],
-    };
-  });
+      certificates: certificate ? [certificate] : [],
+    });
+  }
+  for (const c of api.certificates ?? []) {
+    const file = files.certificates.get(c.id);
+    if (!file) continue;
+    documents.push({
+      source: `certificate:${c.id}`,
+      file,
+      filename: `Stock Certificate ${c.certificate_id} - ${c.stakeholder_company_name}.pdf`,
+      category: "Stock Certificates",
+      certificates: [c.certificate_id],
+    });
+  }
+  return documents;
+}
+
+const csvCell = (value: unknown) => {
+  const text = value === null || value === undefined ? "" : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+/** Pulley's audit log as a readable CSV, oldest first. */
+export function pulleyAuditCsv(api: PulleySnapshot): string {
+  const securities = new Map(api.securities.map((s) => [s.id, certificateOf(s)]));
+  const convertibles = new Map(api.convertibles.map((c) => [c.id, certificateOf(c)]));
+  const actions: Record<string, string> = { I: "Created", U: "Updated", D: "Deleted" };
+  const rows = [...(api.auditLog ?? [])]
+    .sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)))
+    .map((e) => {
+      const record =
+        (e.security && securities.get(e.security.id)) ||
+        (e.convertible && convertibles.get(e.convertible.id)) ||
+        e.stakeholder_company?.view?.name ||
+        e.security_class?.name ||
+        e.equity_plan?.name ||
+        e.vesting_schedule?.name ||
+        e.role?.view?.name ||
+        e.row_data?.filename ||
+        e.row_data?.name ||
+        e.row_id;
+      const changes = Object.fromEntries(
+        Object.entries(e.changed_fields ?? {}).filter(
+          ([k]) => !/^(updated_at|created_at)$/.test(k),
+        ),
+      );
+      return [
+        String(e.timestamp ?? "")
+          .replace("T", " ")
+          .slice(0, 19),
+        actions[e.action] ?? e.action,
+        words(e.table_name),
+        record,
+        Object.keys(changes).length ? JSON.stringify(changes).slice(0, 2000) : "",
+        [e.acting_user?.name, e.acting_user?.email && `<${e.acting_user.email}>`]
+          .filter(Boolean)
+          .join(" "),
+      ];
+    });
+  return [["Date (UTC)", "Action", "Record Type", "Record", "Changes", "By"], ...rows]
+    .map((r) => r.map(csvCell).join(","))
+    .join("\n");
 }
