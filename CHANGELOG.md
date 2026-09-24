@@ -4,6 +4,15 @@ User-visible changes and upgrade notes are recorded here. Release tags identify 
 
 ## Unreleased
 
+## 1.1.0 — 2026-09-24
+
+### Added
+
+- Change password, in the Account menu. It checks the current password and signs out the account's other sessions.
+- Full Pulley imports now bring over everything in Pulley's data room, including charters, equity plan documents, form templates and the company's own folders, plus every stock certificate and a CSV of Pulley's activity history.
+- Imports fill in the company profile, keep stakeholder notes, and mark filed 83(b) elections. The 83(b) tab shows each filing status.
+- The Capy team can bring an already imported company up to date with a newer Pulley snapshot without changing balances or existing values.
+
 ## 1.0.0 — 2026-09-24
 
 Capy is generally available. This release brings full Pulley migrations: everything Pulley holds, not only its Excel export, and a cap table that matches Pulley’s own numbers.
