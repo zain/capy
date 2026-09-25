@@ -170,7 +170,7 @@ Your installation's MCP server is at your `SITE_URL` followed by `/mcp`, for exa
 - **"This Capy connection expired or was removed. Reconnect Capy."** Sign-ins last 30 days without use, and disconnecting ends them. Reconnect from your app; in Claude Code, run `/mcp` and authenticate again.
 - **"This request has expired" during sign-in.** Connection requests last 10 minutes and work once, and belong to the account that started them. Start connecting again from your app.
 - **A company is missing.** Only companies with a cap table can be shared. Tick the company under **Account → Connected apps → Edit**.
-- **The app can't draft changes.** Turn on drafting under **Account → Connected apps → Edit**, and check that you're an admin of that company. Some apps only refresh their tool list when you start a new chat or restart them.
+- **The app can't draft changes.** Turn on drafting under **Account → Connected apps → Edit**, and check that you're an admin of that company. The change takes effect on the app's next request; you don't need to reconnect.
 - **A download link doesn't work.** Links last 15 minutes. Ask the app for a new one.
 - **Apply is greyed out.** The draft no longer fits the cap table, has expired, you're a viewer, or the account is read-only until billing is renewed. The review page says which.
 - **The app says it made a change.** It didn't. Only an admin applying a draft in Capy changes the cap table. Check **Drafted Changes** and Recent Activity.
