@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { PublicPage } from "@/components/public/page";
+import { Shot } from "@/components/public/shot";
 
 const title = "Ask Claude about your cap table";
 const description =
@@ -25,44 +25,6 @@ export const Route = createFileRoute("/ai")({
   }),
   component: AiPage,
 });
-
-// A screenshot inside a browser window frame, so readers can tell which app it came from.
-function Shot({
-  src,
-  width,
-  height,
-  alt,
-  site,
-  size = "wide",
-  children,
-}: {
-  src: string;
-  width: number;
-  height: number;
-  alt: string;
-  site: "claude.ai" | "capyinc.com";
-  size?: "wide" | "narrow";
-  children?: ReactNode;
-}) {
-  return (
-    <figure className={`story-shot ${size}`}>
-      <div className={`story-window ${site === "claude.ai" ? "claude" : "capy"}`}>
-        <div className="story-window-bar" aria-hidden="true">
-          <span className="story-window-dots">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span className="story-window-url">{site}</span>
-        </div>
-        <a href={`/ai/${src}.webp`}>
-          <img src={`/ai/${src}.webp`} width={width} height={height} alt={alt} loading="lazy" />
-        </a>
-      </div>
-      {children && <figcaption>{children}</figcaption>}
-    </figure>
-  );
-}
 
 function AiPage() {
   return (
@@ -90,7 +52,7 @@ function AiPage() {
 
       <h2>“Who owns what?”</h2>
       <Shot
-        src="ownership"
+        src="/ai/ownership.webp"
         width={1566}
         height={1060}
         site="claude.ai"
@@ -101,7 +63,7 @@ function AiPage() {
 
       <h2>“What needs fixing before the board meeting?”</h2>
       <Shot
-        src="health-check"
+        src="/ai/health-check.webp"
         width={1600}
         height={1108}
         site="claude.ai"
@@ -112,7 +74,7 @@ function AiPage() {
 
       <h2>“Model a $15M Series B at $80M pre.”</h2>
       <Shot
-        src="round-model"
+        src="/ai/round-model.webp"
         width={1566}
         height={1320}
         site="claude.ai"
@@ -123,7 +85,7 @@ function AiPage() {
 
       <h2>“Draft a refresh grant for Priya.”</h2>
       <Shot
-        src="draft"
+        src="/ai/draft.webp"
         width={1566}
         height={1235}
         site="claude.ai"
@@ -132,7 +94,7 @@ function AiPage() {
         Claude drafts it…
       </Shot>
       <Shot
-        src="review"
+        src="/ai/review.webp"
         width={1600}
         height={1413}
         site="capyinc.com"
@@ -143,7 +105,7 @@ function AiPage() {
 
       <h2>You choose what it sees</h2>
       <Shot
-        src="consent"
+        src="/ai/consent.webp"
         width={979}
         height={1577}
         site="capyinc.com"
@@ -159,7 +121,7 @@ function AiPage() {
         <code>https://capyinc.com/mcp</code>.
       </p>
       <Shot
-        src="add-connector"
+        src="/ai/add-connector.webp"
         width={1136}
         height={964}
         site="claude.ai"
