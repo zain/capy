@@ -2,19 +2,21 @@
 
 We were Pulley customers too. Pulley shuts down December 8 and wants to send us to Carta. We didn't want Carta before and we don't want it now.
 
-So we built Capy. It does one thing and it does it well: your cap table.
+So we built Capy. It does one thing and it does it well: **your cap table**.
 
-![Capy's dashboard for Northwind Robotics, a made-up company: fully diluted shares, the option pool, ownership by group, and reminders.](/landing/dashboard.webp)
+![Capy's dashboard for Northwind Robotics, a made-up company: fully diluted shares, the option pool, ownership by group, and reminders.](/landing/dashboard.webp "capyinc.com fade")
 
 Lightweight and DIY: issue a SAFE, grant options, or model your next round. Looks and feels just like Pulley.
 
 Or skip clicking and ask Claude by connecting our [MCP server](/ai) directly to your agent.
 
+![Claude using Capy to check a made-up company's cap table before a board meeting: a low option pool, an unsigned consent, an expiring 409A, and a former employee's options still outstanding.](/ai/health-check.webp "claude.ai")
+
 It’s open source, so you can self-host and own your data. Export your cap table to Excel any time.
 
 We have clear pricing that keeps the project alive, the code is on GitHub, and our roadmap is public. If you want to contribute, PRs are welcome.
 
-One plan: $600/yr, unlimited stakeholders, no contracts. Free until Dec 8.
+One plan: **$600/yr, unlimited stakeholders, no contracts**. Free until Dec 8.
 
 [Import your Pulley cap table in one click →](/preview)
 
