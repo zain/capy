@@ -6,7 +6,7 @@ import "@/components/equity/equity.css";
 
 export const Route = createFileRoute("/pulley-import")({
   head: () => ({
-    meta: [{ title: "Full Pulley import | Capy" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Full Pulley import – Capy" }, { name: "robots", content: "noindex" }],
   }),
   component: () => (
     <div className="equity-app eq-auth">

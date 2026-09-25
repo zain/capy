@@ -139,7 +139,7 @@ const groups = [
     children: [["Templates", "certificate_templates"]],
   },
 ];
-const pageTitles: Record<string, string> = {
+export const pageTitles: Record<string, string> = {
   dashboard: "Dashboard",
   captable: "Cap Table",
   security_classes: "Share Classes",
