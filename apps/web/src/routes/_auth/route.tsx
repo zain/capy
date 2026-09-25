@@ -7,6 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Toaster } from "@capy/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
 import { getToken } from "@/lib/auth-server";
+import { isConnectPath } from "@/lib/connect";
 import Header from "@/components/header";
 import "@/components/equity/equity.css";
 
@@ -44,6 +45,11 @@ function AuthLayout() {
           <PublicAnalytics event={showSignIn ? "login_viewed" : "signup_viewed"} />
           <Header />
           <main className="eq-auth-main">
+            {isConnectPath(location.pathname) && (
+              <p className="eq-callout eq-connect-note">
+                Sign in or create an account to connect your AI app to Capy.
+              </p>
+            )}
             {showSignIn ? (
               <SignInForm onSwitchToSignUp={() => setMode(false)} />
             ) : (
@@ -53,6 +59,8 @@ function AuthLayout() {
               <a href="/privacy">Privacy</a>
               <span aria-hidden="true">·</span>
               <a href="/terms">Terms</a>
+              <span aria-hidden="true">·</span>
+              <a href="/docs/mcp">AI apps</a>
             </footer>
           </main>
         </div>

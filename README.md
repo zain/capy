@@ -15,6 +15,7 @@
 <p align="center">
   <a href="https://capyinc.com">Use Capy</a> ·
   <a href="docs/SELF_HOSTING.md">Self-host</a> ·
+  <a href="docs/MCP.md">AI apps</a> ·
   <a href="CONTRIBUTING.md">Contribute</a> ·
   <a href="ROADMAP.md">Roadmap</a> ·
   <a href="CHANGELOG.md">Changelog</a>
@@ -39,6 +40,7 @@ This repository contains the web app, backend functions, equity calculations, im
 | Share with stakeholders | Give a stakeholder access to their own holdings through an invitation that can be claimed once and revoked.                                                 |
 | Keep records            | Store documents and save approval, offer, and communication drafts.                                                                                         |
 | Take your data          | Download the cap table as Excel and individual tables as CSV.                                                                                               |
+| Use it from AI apps     | Connect Claude, ChatGPT, Cursor, or another AI app over MCP to read the cap table and draft changes for an admin to apply.                                  |
 
 <details>
 <summary><strong>See fundraising and SAFE screens</strong></summary>
@@ -59,9 +61,13 @@ Screenshots use fictional companies and synthetic records.
 
 Capy is a young project with a working hosted product. We publish the implementation, checks, and limitations so you can evaluate it yourself.
 
-The current release does **not** send documents for signature, move money, file taxes, provide 409A appraisals, or automate legal-document generation. An MCP server and Open Cap Table Format export are on the [roadmap](ROADMAP.md); exports today are Excel and CSV. Email verification/password recovery delivery and administrator-team invitations are not yet implemented.
+The current release does **not** send documents for signature, move money, file taxes, provide 409A appraisals, or automate legal-document generation. Open Cap Table Format export is on the [roadmap](ROADMAP.md); exports today are Excel and CSV. Email verification/password recovery delivery and administrator-team invitations are not yet implemented.
 
 Read [supported workflows and boundaries](docs/FEATURES.md) and the [Pulley import guide](docs/PULLEY_IMPORT.md) before migrating a company.
+
+### Use Capy from your AI app
+
+Add `https://capyinc.com/mcp` to Claude, ChatGPT, Cursor, VS Code or another MCP client, sign in, and choose which companies the app can see. The app can read your cap table and, if you allow it, draft grants, exercises, cancellations, stakeholder updates and board consents. Nothing changes until an admin applies the draft in Capy. See [connecting AI apps](docs/MCP.md).
 
 ## Run locally
 
@@ -116,7 +122,7 @@ GitHub Actions runs these checks on pushes and pull requests, with a frozen lock
 | Hosted web deployment         | Cloudflare Workers                  |
 
 ```text
-apps/web/               Routes, product UI, authentication, imports, and exports
+apps/web/               Routes, product UI, authentication, imports, exports, and the MCP server
 packages/backend/       Convex schema, functions, permissions, and file storage
 packages/equity/        Shared equity calculations, validation, and modeling
 packages/ui/            Shared UI components

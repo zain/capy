@@ -100,4 +100,73 @@ export default defineSchema({
     data: v.any(),
     revision: v.number(),
   }).index("by_company_kind", ["companyId", "kind"]),
+  // What each connected AI app (OAuth client) may see, chosen by the user on /connect/consent.
+  mcpGrants: defineTable({
+    userId: v.string(),
+    clientId: v.string(),
+    clientName: v.optional(v.string()),
+    companyIds: v.array(v.id("companies")),
+    allowDrafts: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_user_client", ["userId", "clientId"])
+    .index("by_user", ["userId"]),
+  // Changes drafted by a connected AI app. Only an admin applies or rejects them, in Capy.
+  changes: defineTable({
+    companyId: v.id("companies"),
+    importId: v.id("imports"),
+    userId: v.string(),
+    clientId: v.optional(v.string()),
+    clientName: v.optional(v.string()),
+    kind: v.union(
+      v.literal("option_grant"),
+      v.literal("exercise"),
+      v.literal("cancellation"),
+      v.literal("stakeholder_update"),
+      v.literal("board_consent"),
+      v.literal("round_scenario"),
+    ),
+    title: v.string(),
+    rationale: v.string(),
+    payload: v.any(),
+    preview: v.any(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("applied"),
+      v.literal("rejected"),
+      v.literal("expired"),
+      v.literal("failed"),
+    ),
+    expiresAt: v.number(),
+    reviewedBy: v.optional(v.string()),
+    reviewedAt: v.optional(v.number()),
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+  })
+    .index("by_company", ["companyId"])
+    .index("by_company_status", ["companyId", "status"])
+    // For the hourly sweep that expires pending changes.
+    .index("by_status_expires", ["status", "expiresAt"]),
+  // Short-lived download codes for /mcp/files/<code>. The code is the credential.
+  mcpDownloads: defineTable({
+    code: v.string(),
+    userId: v.string(),
+    companyId: v.id("companies"),
+    recordId: v.id("records"),
+    expiresAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_expires", ["expiresAt"]),
+  // Refresh tokens already exchanged, by SHA-256. Makes each one single-use, and a second use
+  // revokes the app's tokens for that user. Rows are dropped once the token would have expired.
+  mcpRefreshClaims: defineTable({
+    hash: v.string(),
+    userId: v.string(),
+    clientId: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_hash", ["hash"])
+    .index("by_expires", ["expiresAt"]),
 });

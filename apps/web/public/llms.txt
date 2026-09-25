@@ -1,0 +1,25 @@
+# Capy
+
+> Capy is open-source cap table management for founders: stakeholders, shares, options, SAFEs, share classes, equity plans, vesting, round modeling and a document data room. It imports from Pulley and exports to Excel and CSV. The hosted service is at https://capyinc.com; the code is AGPL-3.0 at https://github.com/zain/capy.
+
+Capy has a remote MCP server at https://capyinc.com/mcp (self-hosted installations: `<SITE_URL>/mcp`). People connect it to Claude, ChatGPT, Cursor, VS Code and other MCP clients with OAuth, choose which companies the app can see, and can allow it to draft changes. Connected apps read cap tables and draft changes; only a company admin applies a draft, in Capy.
+
+## MCP server
+
+- [Using Capy from an AI assistant](https://capyinc.com/mcp.md): tools, arguments, data semantics, drafting rules and limits, for AI assistants
+- [Connect Capy to your AI app](https://capyinc.com/docs/mcp): setup for each app, the consent screen, permissions, reviewing drafts, revoking and troubleshooting
+
+## Docs
+
+- [README](https://github.com/zain/capy/blob/main/README.md): what Capy does, running it locally and the architecture
+- [Supported workflows and boundaries](https://github.com/zain/capy/blob/main/docs/FEATURES.md): what is and isn't implemented
+- [Pulley import guide](https://github.com/zain/capy/blob/main/docs/PULLEY_IMPORT.md)
+- [Self-hosting](https://github.com/zain/capy/blob/main/docs/SELF_HOSTING.md)
+- [Architecture](https://github.com/zain/capy/blob/main/docs/ARCHITECTURE.md)
+
+## Optional
+
+- [Changelog](https://github.com/zain/capy/blob/main/CHANGELOG.md)
+- [Roadmap](https://github.com/zain/capy/blob/main/ROADMAP.md)
+- [Privacy policy](https://capyinc.com/privacy)
+- [Terms](https://capyinc.com/terms)

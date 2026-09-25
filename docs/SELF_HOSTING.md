@@ -58,6 +58,7 @@ Review the target shown by Convex before confirming. The command selects that pr
 - Download Excel and re-import into a separate company to check the round trip.
 - Verify a second unrelated user cannot access the first company's records.
 - If using stakeholder portals, test claim and revocation separately.
+- If using AI apps, connect the MCP Inspector (`npx @modelcontextprotocol/inspector`) or Claude Code to `https://your-capy.example.com/mcp`, approve the consent screen, and call `list_companies`. See [MCP.md](MCP.md).
 
 Current account email verification and password recovery delivery are not implemented. Review [SECURITY.md](../SECURITY.md) and [product boundaries](FEATURES.md) before deciding who can use your installation.
 
@@ -65,7 +66,7 @@ Current account email verification and password recovery delivery are not implem
 
 Public-page analytics only initialize on `capyinc.com`. Local development and other hostnames do not send events to Capy's PostHog project. No analytics script is loaded on company screens.
 
-The source includes the hosted service's landing copy, pricing, support addresses, canonical metadata, sitemap, and privacy/terms pages. Update `copy.md`, public routes, header/support links, and `apps/web/public/{robots.txt,sitemap.xml}` for your own deployment. The hosted Stripe implementation and price ID remain in source but are unused by self-hosted mode.
+The source includes the hosted service's landing copy, pricing, support addresses, canonical metadata, sitemap, and privacy/terms pages. Update `copy.md`, public routes, header/support links, and `apps/web/public/{robots.txt,sitemap.xml,llms.txt,mcp.md}` for your own deployment. The hosted Stripe implementation and price ID remain in source but are unused by self-hosted mode.
 
 Provide users access to the corresponding source for your installation, including modifications, under the [AGPL license](../LICENSE).
 

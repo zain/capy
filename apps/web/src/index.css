@@ -116,6 +116,75 @@ body {
 .public-page.not-found p {
   margin: 1em 0;
 }
+.public-page.docs h2:first-of-type {
+  font-size: 1.35em;
+  line-height: 1.3;
+  margin-top: 0;
+}
+.public-page.docs h3 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 2.5em 0 0.5em;
+}
+.public-page.docs h4 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 1.75em 0 0.4em;
+}
+.public-page.docs ul,
+.public-page.docs ol {
+  margin: 0 0 1em;
+  padding-left: 1.4em;
+}
+.public-page.docs ol {
+  list-style: decimal;
+}
+.public-page.docs li {
+  margin-bottom: 0.4em;
+}
+.public-page.docs code {
+  font:
+    0.85em/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: rgb(127 127 127 / 14%);
+  overflow-wrap: anywhere;
+}
+.public-page.docs pre {
+  margin: 0 0 1em;
+  padding: 0.8em 1em;
+  border-radius: 6px;
+  background: rgb(127 127 127 / 12%);
+  overflow-x: auto;
+}
+.public-page.docs pre code {
+  padding: 0;
+  background: none;
+  overflow-wrap: normal;
+}
+.docs-table {
+  margin: 0 0 1em;
+  overflow-x: auto;
+}
+.docs-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.docs-table th,
+.docs-table td {
+  padding: 0.45em 0.75em 0.45em 0;
+  border-bottom: 1px solid rgb(127 127 127 / 30%);
+  text-align: left;
+  vertical-align: top;
+}
+.docs-table th {
+  font-weight: 600;
+}
 @media (prefers-color-scheme: dark) {
   body {
     background: #111;

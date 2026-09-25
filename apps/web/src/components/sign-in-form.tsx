@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { resumeAuthorization } from "@/lib/connect";
 
 export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
   const location = useLocation();
@@ -27,7 +28,9 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         },
         {
           onSuccess: () => {
-            if (["/login", "/signup"].includes(location.pathname)) navigate({ to: "/dashboard" });
+            if (location.pathname === "/connect") resumeAuthorization();
+            else if (["/login", "/signup"].includes(location.pathname))
+              navigate({ to: "/dashboard" });
             toast.success("Welcome back");
           },
           onError: (error) => {

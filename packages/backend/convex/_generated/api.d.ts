@@ -10,9 +10,14 @@
 
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
+import type * as changes from "../changes.js";
+import type * as connections from "../connections.js";
+import type * as crons from "../crons.js";
 import type * as equity from "../equity.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as mcp from "../mcp.js";
+import type * as mcpFormat from "../mcpFormat.js";
 import type * as operator from "../operator.js";
 import type * as portal from "../portal.js";
 import type * as privateData from "../privateData.js";
@@ -29,9 +34,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   billing: typeof billing;
+  changes: typeof changes;
+  connections: typeof connections;
+  crons: typeof crons;
   equity: typeof equity;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  mcp: typeof mcp;
+  mcpFormat: typeof mcpFormat;
   operator: typeof operator;
   portal: typeof portal;
   privateData: typeof privateData;
