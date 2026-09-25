@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capy round model</title>
+    <style>
+      .form {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        align-items: end;
+        margin-top: 14px;
+      }
+      @media (max-width: 360px) {
+        .form {
+          grid-template-columns: 1fr;
+        }
+      }
+      .up {
+        color: var(--ink);
+      }
+      .down {
+        color: var(--ink2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="head">
+      <div>
+        <h1 id="title">Priced round model</h1>
+        <p class="muted" id="subtitle">Waiting for the model…</p>
+      </div>
+      <span id="open"></span>
+    </div>
+    <div class="form" role="group" aria-label="Round terms">
+      <label
+        >Pre-money valuation (USD)<input id="preMoney" inputmode="decimal" autocomplete="off"
+      /></label>
+      <label
+        >Investment (USD)<input id="investment" inputmode="decimal" autocomplete="off"
+      /></label>
+      <button class="primary" id="run" type="button">Update</button>
+    </div>
+    <p class="error" id="error" role="alert"></p>
+    <main id="root" aria-live="polite"></main>
+    <script type="module" src="./round.ts"></script>
+  </body>
+</html>

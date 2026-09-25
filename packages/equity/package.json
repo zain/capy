@@ -8,7 +8,11 @@
     "./import": "./src/import.ts",
     "./modeling": "./src/modeling.ts",
     "./billing": "./src/billing.ts",
-    "./pulley": "./src/pulley-api.ts"
+    "./pulley": "./src/pulley-api.ts",
+    "./ownership": "./src/ownership.ts",
+    "./health": "./src/health.ts",
+    "./vesting": "./src/vesting.ts",
+    "./changes": "./src/changes.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",

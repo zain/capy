@@ -47,7 +47,10 @@ import { ContactImport } from "./contact-import";
 import { ChangePassword } from "./change-password";
 import { ImportHelp } from "./import-help";
 import { DataRoom, LinkedDocuments, recordSections, RecordsPage } from "./records";
+import { ChangesList, PendingChangesReminder, ReviewChange } from "./changes";
 import { projectedVested } from "@capy/equity/modeling";
+import { ownershipGroups, stakeholderHoldings, topHolders } from "@capy/equity/ownership";
+import type { OwnershipGroup } from "@capy/equity/ownership";
 import {
   Compliance,
   Fundraising,
@@ -86,6 +89,7 @@ const groups = [
     icon: Table2,
     children: [
       ["Drafts", "drafts"],
+      ["Drafted Changes", "changes"],
       ["Share Classes", "security_classes"],
       ["Equity Plans", "equity_plans"],
       ["Securities Status", "securities_status"],
@@ -150,6 +154,7 @@ const pageTitles: Record<string, string> = {
   data_room: "Data Room",
   report_generator: "Reports",
   drafts: "Drafts",
+  changes: "Drafted Changes",
   securities_status: "Securities Status",
   fundraising: "Fundraising",
   compliance: "Compliance & Tax",
@@ -246,6 +251,7 @@ function Topbar({ companyId }: { companyId?: string }) {
               </div>
               <Link to="/dashboard">Your companies</Link>
               <Link to="/billing">Billing</Link>
+              <Link to="/connected-apps">Connected apps</Link>
               <a href="mailto:hello@capyinc.com">Contact support</a>
               <button
                 onClick={() => {
@@ -486,6 +492,8 @@ function CompanyPage({ path }: { path: string }) {
       return <VestingPage />;
     case "profile":
       return <Profile />;
+    case "changes":
+      return id ? <ReviewChange changeId={id} /> : <ChangesList />;
     case "auditLog":
       return <Activity />;
     case "imports":
@@ -534,37 +542,27 @@ function CompanyPage({ path }: { path: string }) {
       return <MissingPage />;
   }
 }
+const groupColors: Record<OwnershipGroup, string> = {
+  Founders: "#1b4c40",
+  Employees: "#a9d6bc",
+  "Former Employees": "#dce7e1",
+  Advisors: "#dcd9ee",
+  Consultants: "#b9cbbf",
+  Investors: "#7e9b8c",
+  Others: "#c9d3cd",
+  Available: "#ededed",
+  Unknown: "#d5dbd7",
+};
 function Dashboard() {
   const user = useQuery(api.auth.getCurrentUser);
   const { company, data, totals: t, activity } = useCompany();
   const documents = useQuery(api.records.list, { companyId: company._id, kind: "document" });
-  // Pulley writes relationships as "Ex Employee", "EX_EMPLOYEE" or "Ex-Employee", so compare letters only.
-  const relationship = (p: Stakeholder) => p.relationship.toLowerCase().replace(/[^a-z]/g, "");
-  const groups: [string, string, string[]][] = [
-    ["Founders", "#1b4c40", ["founder"]],
-    ["Employees", "#a9d6bc", ["employee"]],
-    ["Former Employees", "#dce7e1", ["exemployee", "formeremployee"]],
-    ["Advisors", "#dcd9ee", ["advisor", "boardmember"]],
-    ["Consultants", "#b9cbbf", ["consultant"]],
-    ["Investors", "#7e9b8c", ["investor"]],
-    ["Others", "#c9d3cd", ["other"]],
-  ];
-  const grouped = new Set(groups.flatMap(([, , kinds]) => kinds));
-  const sharesOf = (people: Stakeholder[]) =>
-    sum(people.map((p) => stakeholderShares(data.securities, p.key)));
-  const breakdown = [
-    ...groups.map(([label, color, kinds]) => ({
-      label,
-      color,
-      shares: sharesOf(data.stakeholders.filter((p) => kinds.includes(relationship(p)))),
-    })),
-    { label: "Available", color: "#ededed", shares: t.available },
-    {
-      label: "Unknown",
-      color: "#d5dbd7",
-      shares: sharesOf(data.stakeholders.filter((p) => !grouped.has(relationship(p)))),
-    },
-  ];
+  const holdings = stakeholderHoldings(data);
+  const breakdown = ownershipGroups(data, holdings).map((g) => ({
+    label: g.group,
+    color: groupColors[g.group],
+    shares: g.shares,
+  }));
   const holders = new Set(
     data.securities.filter((s) => D(s.outstanding).gt(0)).map((s) => s.stakeholderKey),
   );
@@ -578,22 +576,10 @@ function Dashboard() {
       return `${b.color} ${start}% ${cursor}%`;
     })
     .join(",");
-  const top = [
-    ...data.stakeholders.map((p) => ({
-      key: p.key,
-      name: p.name,
-      shares: stakeholderShares(data.securities, p.key),
-      path: `stakeholders/${p.key}`,
-    })),
-    ...data.plans.map((p) => ({
-      key: p.name,
-      name: `Available ${p.name}`,
-      shares: p.available,
-      path: `equity_plans/${encodeURIComponent(p.name)}`,
-    })),
-  ]
-    .sort((a, b) => D(b.shares).cmp(a.shares))
-    .slice(0, 5);
+  const top = topHolders(data, 5, holdings).map((r) => ({
+    ...r,
+    path: r.kind === "plan" ? `equity_plans/${encodeURIComponent(r.key)}` : `stakeholders/${r.key}`,
+  }));
   return (
     <div className="eq-dashboard-grid">
       <div className="eq-dashboard-column">
@@ -715,6 +701,7 @@ function Dashboard() {
         </section>
         <section className="eq-panel eq-dashboard-card">
           <h2 style={{ marginBottom: 20 }}>Reminders</h2>
+          <PendingChangesReminder />
           <div className="eq-reminder">
             <CompanyLink page="imports">
               {data.sheets.length ? "Review your import" : "Import your cap table"}
@@ -757,8 +744,8 @@ function Dashboard() {
               {a.description}
               <br />
               <span className="eq-muted">
-                {a.actor === user?.name || a.actor === user?.email ? "You" : a.actor} ·{" "}
-                {new Date(a._creationTime).toLocaleDateString()}
+                {a.actor === user?.name || a.actor === user?.email ? "You" : a.actor}
+                {draftFrom(a)} · {new Date(a._creationTime).toLocaleDateString()}
               </span>
             </p>
           ))}
@@ -1413,7 +1400,7 @@ function SecurityDetail({ securityKey }: { securityKey: string }) {
               ),
             ],
             ...(s.vestEvents?.length
-              ? ([["Vested Today", number(projectedVested(s, data.asOf, today()))]] as [
+              ? ([["Vested Today", number(projectedVested(s, data.asOf, today(), p))]] as [
                   string,
                   ReactNode,
                 ][])
@@ -1747,12 +1734,18 @@ function Activity() {
           {
             key: "actor",
             label: "User",
-            value: (a) => (a.actor === user?.name || a.actor === user?.email ? "You" : a.actor),
+            value: (a) =>
+              (a.actor === user?.name || a.actor === user?.email ? "You" : a.actor) + draftFrom(a),
           },
         ]}
       />
     </section>
   );
+}
+/** Changes applied or rejected from a connected AI app's draft name the app. */
+function draftFrom(a: { details?: unknown }) {
+  const d = a.details as { via?: string; clientName?: string } | undefined;
+  return d?.via === "mcp" ? ` (draft from ${d.clientName || "an AI app"})` : "";
 }
 function ImportReport() {
   const { data } = useCompany();

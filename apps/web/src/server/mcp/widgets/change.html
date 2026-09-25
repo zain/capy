@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capy drafted change</title>
+    <style>
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 1px 8px;
+        margin-bottom: 6px;
+        color: var(--ink2);
+      }
+      .summary {
+        margin-top: 8px;
+      }
+      .notice ul {
+        margin: 4px 0 0;
+        padding-left: 18px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .after {
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="root"><p class="empty">Loading the drafted change…</p></main>
+    <script type="module" src="./change.ts"></script>
+  </body>
+</html>

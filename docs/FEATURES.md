@@ -13,6 +13,7 @@ This document describes the initial public release, not a promise of future feat
 - Document upload/download and saved drafts for approvals, offers, and communications.
 - Restricted stakeholder portal invitations, claims, previews, and revocation.
 - Email/password sign-in, hosted subscriptions, and independent self-hosted mode.
+- An MCP server for AI apps, with per-connection company choices, read-only tools, and drafted changes that an admin reviews and applies in Capy. See [MCP.md](MCP.md).
 
 ## Import boundaries
 
@@ -44,6 +45,12 @@ A stakeholder invitation can be claimed once, expires after seven days if unused
 
 Signup/sign-in work. Email verification, password recovery delivery, and SSO require provider integrations before those flows can be offered.
 
+## AI app boundaries
+
+Connected apps act as the signed-in user, only for the companies chosen when connecting, with that user's role. They read; they cannot change the cap table. With drafting allowed, an admin's connection can draft option and RSU grants, exercises, cancellations, stakeholder updates, board consents and round scenarios. A draft changes nothing until an admin with editing access applies it in Capy. Drafts expire after 7 days.
+
+There is no MCP tool to apply, delete, send email or collect signatures. Download links from the MCP server last 15 minutes. Drafts cover only those kinds: they cannot add share classes or plans, issue stock or SAFEs other than by exercise, or record transfers. Browser-based agents (WebMCP) are not supported.
+
 ## Formats and integrations
 
-Exports today are Excel and CSV. An MCP server and Open Cap Table Format export are planned, not shipped. Capy is independent of Pulley and Carta.
+Exports today are Excel and CSV. Open Cap Table Format export is planned, not shipped. Capy is independent of Pulley and Carta.

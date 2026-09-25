@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@capy/backend/convex/_generated/api";
 import { D, formatNumber as number, isConvertible } from "@capy/equity";
+import type { Security } from "@capy/equity";
 import { modelRound, projectedVested } from "@capy/equity/modeling";
 import { useCompany } from "./context";
 import { DataTable, Field, downloadText, csvCell } from "./ui";
@@ -267,6 +268,7 @@ export function Fundraising() {
 export function VestingPage() {
   const { data } = useCompany();
   const [target, setTarget] = useState(data.asOf);
+  const holderOf = (s: Security) => data.stakeholders.find((p) => p.key === s.stakeholderKey);
   const names = [...new Set(data.securities.map((s) => s.vestingSchedule).filter(Boolean))];
   return (
     <section className="eq-panel">
@@ -320,9 +322,9 @@ export function VestingPage() {
           {
             key: "vested",
             label: "Vested",
-            value: (s) => projectedVested(s, data.asOf, target),
+            value: (s) => projectedVested(s, data.asOf, target, holderOf(s)),
             render: (s) => {
-              const value = projectedVested(s, data.asOf, target);
+              const value = projectedVested(s, data.asOf, target, holderOf(s));
               return value === null ? "Schedule needed" : number(value);
             },
           },
@@ -330,11 +332,11 @@ export function VestingPage() {
             key: "unvested",
             label: "Unvested",
             value: (s) => {
-              const value = projectedVested(s, data.asOf, target);
+              const value = projectedVested(s, data.asOf, target, holderOf(s));
               return value === null ? null : D(s.outstanding).minus(value).toFixed();
             },
             render: (s) => {
-              const value = projectedVested(s, data.asOf, target);
+              const value = projectedVested(s, data.asOf, target, holderOf(s));
               return value === null ? "—" : number(D(s.outstanding).minus(value).toFixed());
             },
           },

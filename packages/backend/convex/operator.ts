@@ -6,7 +6,14 @@ import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { appendImportAs, completeImportAs, parse, startImportAs, type AuthUser } from "./equity";
+import {
+  appendImportAs,
+  completeImportAs,
+  loadCompany,
+  parse,
+  startImportAs,
+  type AuthUser,
+} from "./equity";
 
 const importedBy = "Capy import team";
 
@@ -132,25 +139,19 @@ export const addRecords = internalMutation({
 export const companySnapshot = internalQuery({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {
-    const company = await ctx.db.get(companyId);
-    if (!company?.activeImport) throw new ConvexError("This company has no completed import.");
-    const imp = await ctx.db.get(company.activeImport);
-    const stakeholders = await ctx.db
-      .query("stakeholders")
-      .withIndex("by_import", (q) => q.eq("importId", company.activeImport!))
-      .collect();
-    const securities = await ctx.db
-      .query("securities")
-      .withIndex("by_import", (q) => q.eq("importId", company.activeImport!))
-      .collect();
+    const { imp, data } = await loadCompany(
+      ctx,
+      companyId,
+      "This company has no completed import.",
+    );
     const records = await ctx.db
       .query("records")
       .withIndex("by_company_kind", (q) => q.eq("companyId", companyId))
       .collect();
     return {
-      ...imp!.metadata,
-      stakeholders: stakeholders.map((s) => s.data),
-      securities: securities.map((s) => s.data),
+      ...imp.metadata,
+      stakeholders: data.stakeholders,
+      securities: data.securities,
       records: records.map((r) => ({
         kind: r.kind,
         title: r.title,

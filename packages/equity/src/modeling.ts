@@ -1,11 +1,12 @@
 import { D, Decimal, isConvertible, stakeholderShares, sum, totals } from "./index";
-import type { EquityImport, Security } from "./index";
+import type { EquityImport, Security, Stakeholder } from "./index";
 
 export function modelRound(data: EquityImport, preMoney: string, investment: string) {
   const fd = D(totals(data).fullyDiluted),
     valuation = D(preMoney),
     cash = D(investment);
-  if (fd.lte(0) || valuation.lte(0) || cash.lt(0))
+  if (fd.lte(0)) throw new Error("This company has no shares on its cap table yet.");
+  if (valuation.lte(0) || cash.lt(0))
     throw new Error("Enter a positive valuation and a nonnegative investment.");
   const convertibles = data.securities.filter((s) => isConvertible(s) && D(s.outstanding).gt(0));
   const specs = convertibles.map((s) => {
@@ -117,6 +118,10 @@ export function canProjectVesting(s: Security) {
     (Boolean(s.vestingStart) && monthlySchedule.test(s.vestingSchedule.toLowerCase()))
   );
 }
+/** The date vesting stops: the security's own termination date, else its holder's. */
+export function terminationDate(s: Security, holder?: Pick<Stakeholder, "fields"> | null) {
+  return s.fields["Termination Date"] || holder?.fields?.["Termination Date"] || "";
+}
 function vestedFromEvents(s: Security, target: string) {
   const vested = s.vestEvents!.reduce(
     (total, e) => (e.date <= target ? total.plus(e.shares) : total),
@@ -125,15 +130,22 @@ function vestedFromEvents(s: Security, target: string) {
   const exercised = D(s.fields["Exercised/Settled"] || 0);
   return Decimal.min(s.outstanding, Decimal.max(0, vested.minus(exercised))).toFixed();
 }
-export function projectedVested(s: Security, asOf: string, target: string): string | null {
-  if (s.vestEvents?.length) return vestedFromEvents(s, target);
+/** Vested shares on `target`. Vesting stops at the termination date of the security or its holder. */
+export function projectedVested(
+  s: Security,
+  asOf: string,
+  target: string,
+  holder?: Pick<Stakeholder, "fields"> | null,
+): string | null {
+  const termination = terminationDate(s, holder);
+  if (s.vestEvents?.length)
+    return vestedFromEvents(s, termination && termination < target ? termination : target);
   asOf = s.balanceAsOf || asOf;
   if (target === asOf) return s.vested;
   if (s.vested === null || !asOf || target < asOf) return null;
   // Vesting never reverses, so a fully vested balance stays fully vested.
   if (D(s.vested).gte(s.outstanding)) return s.outstanding;
   if (!s.vestingStart) return null;
-  const termination = s.fields["Termination Date"];
   if (termination && termination <= asOf) return s.vested;
   const end = termination && termination < target ? termination : target;
   const match = s.vestingSchedule.toLowerCase().match(monthlySchedule);
@@ -150,4 +162,88 @@ export function projectedVested(s: Security, asOf: string, target: string): stri
     s.outstanding,
     D(s.vested).plus(Decimal.max(0, amount(endMonths).minus(amount(startMonths)))),
   ).toFixed();
+}
+function monthAnniversary(start: string, months: number) {
+  const [y, m, d] = start.split("-").map(Number) as [number, number, number];
+  const last = new Date(Date.UTC(y, m + months, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m - 1 + months, Math.min(d, last))).toISOString().slice(0, 10);
+}
+/**
+ * The same vesting as `projectedVested`, as a step function over (from, to]: the vested amount on
+ * `from`, then each date the amount changes. Dates before the security's balance date use its
+ * recorded balance. Null when the vesting can't be projected.
+ */
+export function vestingSteps(
+  s: Security,
+  asOf: string,
+  from: string,
+  to: string,
+  holder?: Pick<Stakeholder, "fields"> | null,
+): { start: string; steps: { date: string; vested: string }[] } | null {
+  if (!canProjectVesting(s)) return null;
+  const termination = terminationDate(s, holder);
+  const steps: { date: string; vested: string }[] = [];
+  if (s.vestEvents?.length) {
+    const events = [...s.vestEvents].sort((a, b) =>
+      a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+    );
+    const exercised = D(s.fields["Exercised/Settled"] || 0);
+    const vested = (total: Decimal) =>
+      Decimal.min(s.outstanding, Decimal.max(0, total.minus(exercised))).toFixed();
+    const stop = termination && termination < to ? termination : to,
+      first = termination && termination < from ? termination : from;
+    let total = D(0),
+      i = 0;
+    for (; i < events.length && events[i]!.date <= first; i++)
+      total = total.plus(events[i]!.shares);
+    const start = vested(total);
+    let last = start;
+    while (i < events.length && events[i]!.date <= stop) {
+      const date = events[i]!.date;
+      for (; i < events.length && events[i]!.date === date; i++)
+        total = total.plus(events[i]!.shares);
+      const value = vested(total);
+      if (value !== last) steps.push({ date, vested: (last = value) });
+    }
+    return { start, steps };
+  }
+  const balance = s.balanceAsOf || asOf,
+    recorded = s.vested;
+  if (recorded === null || !balance) return null;
+  if (D(recorded).gte(s.outstanding)) {
+    if (from > balance) return { start: s.outstanding, steps };
+    // The day after the balance date, projection caps an over-vested balance at outstanding.
+    const day = Date.parse(balance + "T00:00:00Z"),
+      next = Number.isNaN(day) ? to : new Date(day + 86400000).toISOString().slice(0, 10);
+    if (to > balance && !D(recorded).eq(s.outstanding))
+      steps.push({ date: next < to ? next : to, vested: s.outstanding });
+    return { start: recorded, steps };
+  }
+  const constant = { start: recorded, steps };
+  const match = s.vestingSchedule.toLowerCase().match(monthlySchedule);
+  const duration = Number(match?.[1] ?? 0),
+    cliff = match?.[2] === "no cliff" ? 0 : 12;
+  const m0 = s.vestingStart ? completedMonths(s.vestingStart, balance) : null;
+  if (!match || duration <= 0 || cliff > duration || m0 === null)
+    return to > balance ? null : constant;
+  if (termination && termination <= balance) return constant;
+  const issued = D(s.issued),
+    base = D(recorded),
+    cap = D(s.outstanding);
+  const amount = (months: number) =>
+    months < cliff ? D(0) : issued.mul(Math.min(months, duration)).div(duration).floor();
+  const a0 = amount(m0);
+  const at = (months: number) =>
+    Decimal.min(cap, base.plus(Decimal.max(0, amount(months).minus(a0)))).toFixed();
+  const first = termination && termination < from ? termination : from;
+  const mFrom = first > balance ? completedMonths(s.vestingStart, first)! : m0;
+  const start = first > balance ? at(mFrom) : recorded;
+  let last = start;
+  for (let k = mFrom + 1; k <= duration && last !== s.outstanding; k++) {
+    const date = monthAnniversary(s.vestingStart, k);
+    if (date > to || (termination && date > termination)) break;
+    const value = at(k);
+    if (value !== last) steps.push({ date, vested: (last = value) });
+  }
+  return { start, steps };
 }

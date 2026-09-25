@@ -1,28 +1,21 @@
 import { v, ConvexError } from "convex/values";
 import { z } from "zod";
+import {
+  recordDataSchema,
+  recordKindSchema,
+  recordStatusSchema,
+  recordTitleSchema,
+} from "@capy/equity/changes";
 import { mutation, query } from "./_generated/server";
-import { member, parse } from "./equity";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { member, memberAs, parse, user, type AuthUser, type ChangeMeta } from "./equity";
 
-const kinds = z.enum([
-  "document",
-  "approval",
-  "offer",
-  "communication",
-  "fundraising",
-  "vesting",
-  "contact",
-  "valuation",
-  "template",
-  "consent",
-  "draft",
-  "service",
-  "liquidity",
-]);
 export const list = query({
   args: { companyId: v.id("companies"), kind: v.string() },
   handler: async (ctx, args) => {
     await member(ctx, args.companyId);
-    parse(kinds, args.kind);
+    parse(recordKindSchema, args.kind);
     return await ctx.db
       .query("records")
       .withIndex("by_company_kind", (q) => q.eq("companyId", args.companyId).eq("kind", args.kind))
@@ -40,39 +33,54 @@ export const save = mutation({
     status: v.string(),
     data: v.any(),
   },
-  handler: async (ctx, args) => {
-    const u = await member(ctx, args.companyId, true);
-    parse(kinds, args.kind);
-    const title = parse(z.string().trim().min(1).max(300), args.title),
-      status = parse(z.enum(["Draft", "Recorded", "Archived"]), args.status);
-    const data = parse(z.record(z.string().max(100), z.string().max(100000)), args.data);
-    const previous = args.id ? await ctx.db.get(args.id) : null;
-    if (
-      args.id &&
-      (!previous || previous.companyId !== args.companyId || previous.kind !== args.kind)
-    )
-      throw new ConvexError("Record not found.");
-    if (previous && previous.revision !== args.revision)
-      throw new ConvexError("This record changed. Refresh and try again.");
-    const value = {
-      companyId: args.companyId,
-      kind: args.kind,
-      title,
-      status,
-      data,
-      revision: (previous?.revision || 0) + 1,
-    };
-    const id = previous
-      ? (await ctx.db.patch(previous._id, value), previous._id)
-      : await ctx.db.insert("records", value);
-    await ctx.db.insert("activity", {
-      companyId: args.companyId,
-      actor: u.name || u.email,
-      description: `${previous ? "Updated" : "Added"} ${args.kind}: ${title}`,
-    });
-    return id;
-  },
+  handler: async (ctx, args) => await saveRecordAs(ctx, await user(ctx), args),
 });
+export async function saveRecordAs(
+  ctx: MutationCtx,
+  u: AuthUser,
+  args: {
+    companyId: Id<"companies">;
+    id?: Id<"records">;
+    revision?: number;
+    kind: string;
+    title: string;
+    status: string;
+    data: unknown;
+  },
+  meta?: ChangeMeta,
+) {
+  await memberAs(ctx, u, args.companyId, true);
+  parse(recordKindSchema, args.kind);
+  const title = parse(recordTitleSchema, args.title),
+    status = parse(recordStatusSchema, args.status);
+  const data = parse(recordDataSchema, args.data);
+  const previous = args.id ? await ctx.db.get(args.id) : null;
+  if (
+    args.id &&
+    (!previous || previous.companyId !== args.companyId || previous.kind !== args.kind)
+  )
+    throw new ConvexError("Record not found.");
+  if (previous && previous.revision !== args.revision)
+    throw new ConvexError("This record changed. Refresh and try again.");
+  const value = {
+    companyId: args.companyId,
+    kind: args.kind,
+    title,
+    status,
+    data,
+    revision: (previous?.revision || 0) + 1,
+  };
+  const id = previous
+    ? (await ctx.db.patch(previous._id, value), previous._id)
+    : await ctx.db.insert("records", value);
+  await ctx.db.insert("activity", {
+    companyId: args.companyId,
+    actor: u.name || u.email,
+    description: `${previous ? "Updated" : "Added"} ${args.kind}: ${title}`,
+    ...(meta && Object.keys(meta).length ? { details: meta } : {}),
+  });
+  return id;
+}
 export const uploadUrl = mutation({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {

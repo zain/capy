@@ -18,6 +18,8 @@ export const Route = createFileRoute("/pulley-import")({
           <a href="/privacy">Privacy</a>
           <span aria-hidden="true">·</span>
           <a href="/terms">Terms</a>
+          <span aria-hidden="true">·</span>
+          <a href="/docs/mcp">AI apps</a>
         </footer>
       </main>
     </div>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capy ownership</title>
+    <style>
+      .bar {
+        display: block;
+        width: 100%;
+        height: 28px;
+        margin: 4px 0 12px;
+      }
+      .bar rect {
+        cursor: default;
+      }
+      .bar rect:focus-visible {
+        outline: none;
+        stroke: var(--ink);
+        stroke-width: 2px;
+      }
+      .foot {
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="root"><p class="empty">Loading the cap table…</p></main>
+    <script type="module" src="./ownership.ts"></script>
+  </body>
+</html>

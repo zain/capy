@@ -2,7 +2,6 @@ import { requireEditing, accessForUser } from "./billing";
 import { v, ConvexError } from "convex/values";
 import { z } from "zod";
 import {
-  Decimal,
   D,
   classSchema,
   planSchema,
@@ -18,9 +17,13 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { authComponent } from "./auth";
-import { projectedVested } from "@capy/equity/modeling";
+import {
+  applySecurityEvent,
+  applySecurityToMetadata,
+  securityValuesError,
+} from "@capy/equity/changes";
 
-async function user(ctx: QueryCtx | MutationCtx) {
+export async function user(ctx: QueryCtx | MutationCtx) {
   const u = await authComponent.safeGetAuthUser(ctx);
   if (!u) throw new ConvexError("Sign in to access your company.");
   return u;
@@ -54,6 +57,12 @@ export async function memberAs(
   }
   return u;
 }
+/** Attribution for a change applied from a connected app, merged into activity details. */
+export type ChangeMeta = { via?: "mcp"; changeId?: Id<"changes">; clientName?: string };
+function withMeta(details: Record<string, unknown> | undefined, meta?: ChangeMeta) {
+  const merged = meta && Object.keys(meta).length ? { ...details, ...meta } : details;
+  return merged ? { details: merged } : {};
+}
 export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   if (!result.success)
@@ -65,7 +74,7 @@ export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
     );
   return result.data;
 }
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
   if (value && typeof value === "object")
     return (
@@ -295,42 +304,59 @@ export async function completeImportAs(ctx: MutationCtx, u: AuthUser, importId: 
   });
   return imp.companyId;
 }
+/** The company's active cap table, as stored rows and as one EquityImport. */
+export async function loadCompany(
+  ctx: QueryCtx | MutationCtx,
+  companyId: Id<"companies">,
+  incomplete = "Company import is not complete.",
+) {
+  const company = await ctx.db.get(companyId);
+  if (!company?.activeImport) throw new ConvexError(incomplete);
+  const imp = await ctx.db.get(company.activeImport);
+  if (!imp) throw new ConvexError("Import missing.");
+  const [people, securities] = await Promise.all([
+    ctx.db
+      .query("stakeholders")
+      .withIndex("by_import", (q) => q.eq("importId", imp._id))
+      .collect(),
+    ctx.db
+      .query("securities")
+      .withIndex("by_import", (q) => q.eq("importId", imp._id))
+      .collect(),
+  ]);
+  const data: EquityImport = {
+    ...imp.metadata,
+    name: company.name,
+    stakeholders: people.map((p) => p.data as Stakeholder),
+    securities: securities.map((s) => s.data as Security),
+  };
+  return {
+    company,
+    imp,
+    data,
+    people: people.map((p) => ({ ...p, data: p.data as Stakeholder })),
+    securities: securities.map((s) => ({ ...s, data: s.data as Security })),
+  };
+}
 export const company = query({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {
     await member(ctx, companyId);
-    const c = await ctx.db.get(companyId);
-    if (!c?.activeImport) throw new ConvexError("Company import is not complete.");
-    const imp = await ctx.db.get(c.activeImport);
-    if (!imp) throw new ConvexError("Import missing.");
-    const [people, securities, activity] = await Promise.all([
-      ctx.db
-        .query("stakeholders")
-        .withIndex("by_import", (q) => q.eq("importId", imp._id))
-        .collect(),
-      ctx.db
-        .query("securities")
-        .withIndex("by_import", (q) => q.eq("importId", imp._id))
-        .collect(),
+    const [{ company: c, data, people, securities }, activity] = await Promise.all([
+      loadCompany(ctx, companyId),
       ctx.db
         .query("activity")
         .withIndex("by_company", (q) => q.eq("companyId", companyId))
         .order("desc")
         .take(100),
     ]);
-    const data: EquityImport = {
-      ...imp.metadata,
-      name: c.name,
-      stakeholders: people.map((p) => p.data as Stakeholder),
-      securities: securities.map((s) => s.data as Security),
-    };
     return {
       company: c,
       billing: await accessForUser(ctx, c.ownerId),
       data,
       totals: totals(data),
-      people: people.map((p) => ({ ...p, data: p.data as Stakeholder })),
-      securities: securities.map((s) => ({ ...s, data: s.data as Security })),
+      people,
+      securities,
       activity,
     };
   },
@@ -342,37 +368,49 @@ export const saveStakeholder = mutation({
     revision: v.optional(v.number()),
     data: v.any(),
   },
-  handler: async (ctx, args) => {
-    const u = await member(ctx, args.companyId, true);
-    const c = await ctx.db.get(args.companyId);
-    if (!c?.activeImport) throw new ConvexError("Company unavailable.");
-    const p = parse(stakeholderSchema, args.data);
-    if (args.id) {
-      const prior = await ctx.db.get(args.id);
-      if (!prior || prior.companyId !== c._id || prior.importId !== c.activeImport)
-        throw new ConvexError("Stakeholder not found.");
-      if (prior.revision !== args.revision)
-        throw new ConvexError("This stakeholder changed. Refresh and try again.");
-      p.key = prior.key;
-      await ctx.db.patch(prior._id, { data: p, revision: prior.revision + 1 });
-    } else {
-      p.key = crypto.randomUUID();
-      await ctx.db.insert("stakeholders", {
-        companyId: c._id,
-        importId: c.activeImport,
-        key: p.key,
-        data: p,
-        revision: 1,
-      });
-    }
-    await ctx.db.insert("activity", {
-      companyId: c._id,
-      actor: u.name || u.email,
-      description: `${args.id ? "Updated" : "Added"} stakeholder ${p.name}`,
-    });
-    return p.key;
-  },
+  handler: async (ctx, args) => await saveStakeholderAs(ctx, await user(ctx), args),
 });
+export async function saveStakeholderAs(
+  ctx: MutationCtx,
+  u: AuthUser,
+  args: {
+    companyId: Id<"companies">;
+    id?: Id<"stakeholders">;
+    revision?: number;
+    data: unknown;
+  },
+  meta?: ChangeMeta,
+) {
+  await memberAs(ctx, u, args.companyId, true);
+  const c = await ctx.db.get(args.companyId);
+  if (!c?.activeImport) throw new ConvexError("Company unavailable.");
+  const p = parse(stakeholderSchema, args.data);
+  if (args.id) {
+    const prior = await ctx.db.get(args.id);
+    if (!prior || prior.companyId !== c._id || prior.importId !== c.activeImport)
+      throw new ConvexError("Stakeholder not found.");
+    if (prior.revision !== args.revision)
+      throw new ConvexError("This stakeholder changed. Refresh and try again.");
+    p.key = prior.key;
+    await ctx.db.patch(prior._id, { data: p, revision: prior.revision + 1 });
+  } else {
+    p.key = crypto.randomUUID();
+    await ctx.db.insert("stakeholders", {
+      companyId: c._id,
+      importId: c.activeImport,
+      key: p.key,
+      data: p,
+      revision: 1,
+    });
+  }
+  await ctx.db.insert("activity", {
+    companyId: c._id,
+    actor: u.name || u.email,
+    description: `${args.id ? "Updated" : "Added"} stakeholder ${p.name}`,
+    ...withMeta(undefined, meta),
+  });
+  return p.key;
+}
 export const mergeContacts = mutation({
   args: { companyId: v.id("companies"), contacts: v.any() },
   handler: async (ctx, args) => {
@@ -502,101 +540,69 @@ export const saveSecurity = mutation({
     data: v.any(),
     reason: v.string(),
   },
-  handler: async (ctx, args) => {
-    const u = await member(ctx, args.companyId, true);
-    const c = await ctx.db.get(args.companyId);
-    if (!c?.activeImport) throw new ConvexError("Company unavailable.");
-    const imp = await ctx.db.get(c.activeImport);
-    if (!imp) throw new ConvexError("Import missing.");
-    const s = parse(securitySchema, args.data),
-      metadata = imp.metadata as EquityImport;
-    if (!args.reason.trim()) throw new ConvexError("Enter a reason for the recorded change.");
-    if (D(s.outstanding).gt(s.issued) || D(s.vested).gt(s.outstanding))
-      throw new ConvexError(
-        "Outstanding cannot exceed issued, and vested cannot exceed outstanding.",
-      );
-    if (!z.iso.date().safeParse(s.issuedOn).success)
-      throw new ConvexError("Enter a valid issue date.");
-    if (
-      s.balanceAsOf &&
-      (!z.iso.date().safeParse(s.balanceAsOf).success || s.balanceAsOf < s.issuedOn)
-    )
-      throw new ConvexError("Balance date must be on or after the issue date.");
-    const holder = await ctx.db
-      .query("stakeholders")
-      .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.stakeholderKey))
-      .unique();
-    if (!holder) throw new ConvexError("Select an existing stakeholder.");
-    const previous = args.id ? await ctx.db.get(args.id) : null;
-    if (args.id && (!previous || previous.companyId !== c._id || previous.importId !== imp._id))
-      throw new ConvexError("Security not found.");
-    if (previous && previous.revision !== args.revision)
-      throw new ConvexError("This security changed. Refresh and try again.");
-    const old = previous?.data as Security | undefined;
-    if (
-      old &&
-      (old.kind !== s.kind || old.planName !== s.planName || old.className !== s.className)
-    )
-      throw new ConvexError("Security type, class and plan are fixed after creation.");
-    const convertible = s.kind === "safe" || s.kind === "note";
-    const shareClass = metadata.classes.find((c) => c.name === s.className);
-    if (!convertible && !shareClass) throw new ConvexError("Select an existing share class.");
-    if (s.planName && !old && s.kind === "share")
-      throw new ConvexError("Record plan stock by exercising its option grant.");
-    if (s.planName && s.kind !== "share") {
-      const plan = metadata.plans.find((p) => p.name === s.planName);
-      if (!plan || plan.className !== s.className)
-        throw new ConvexError("Select a plan for this share class.");
-      const delta = D(s.issued).minus(old?.issued || 0);
-      const available = D(plan.available).minus(delta);
-      if (available.lt(0) || available.gt(plan.authorized))
-        throw new ConvexError("The plan does not have enough available shares for this change.");
-      plan.available = available.toFixed();
-    }
-    if (s.kind === "share" && shareClass) {
-      if (shareClass.capital !== null)
-        shareClass.capital = D(shareClass.capital)
-          .plus(D(s.capital).minus(old?.capital || 0))
-          .toFixed();
-      if (shareClass.reportedOutstanding !== null)
-        shareClass.reportedOutstanding = D(shareClass.reportedOutstanding)
-          .plus(D(s.outstanding).minus(old?.outstanding || 0))
-          .toFixed();
-      if (
-        shareClass.authorized !== null &&
-        shareClass.reportedOutstanding !== null &&
-        D(shareClass.reportedOutstanding).gt(shareClass.authorized)
-      )
-        throw new ConvexError("This issuance exceeds the share class authorization.");
-    }
-    s.key = old?.key || crypto.randomUUID();
-    s.sourceSheet = old?.sourceSheet || "Recorded in Capy";
-    s.sourceRow = old?.sourceRow || 0;
-    if (previous)
-      await ctx.db.patch(previous._id, {
-        data: s,
-        stakeholderKey: s.stakeholderKey,
-        revision: previous.revision + 1,
-      });
-    else
-      await ctx.db.insert("securities", {
-        companyId: c._id,
-        importId: imp._id,
-        key: s.key,
-        stakeholderKey: s.stakeholderKey,
-        data: s,
-        revision: 1,
-      });
-    await ctx.db.patch(imp._id, { metadata });
-    await ctx.db.insert("activity", {
-      companyId: c._id,
-      actor: u.name || u.email,
-      description: `${previous ? "Updated" : "Recorded"} ${s.certificate}: ${args.reason}`,
-      details: { before: old || null, after: s },
-    });
-    return s.key;
-  },
+  handler: async (ctx, args) => await saveSecurityAs(ctx, await user(ctx), args),
 });
+export async function saveSecurityAs(
+  ctx: MutationCtx,
+  u: AuthUser,
+  args: {
+    companyId: Id<"companies">;
+    id?: Id<"securities">;
+    revision?: number;
+    data: unknown;
+    reason: string;
+  },
+  meta?: ChangeMeta,
+) {
+  await memberAs(ctx, u, args.companyId, true);
+  const c = await ctx.db.get(args.companyId);
+  if (!c?.activeImport) throw new ConvexError("Company unavailable.");
+  const imp = await ctx.db.get(c.activeImport);
+  if (!imp) throw new ConvexError("Import missing.");
+  const s = parse(securitySchema, args.data),
+    metadata = imp.metadata as EquityImport;
+  const invalid = securityValuesError(s, args.reason);
+  if (invalid) throw new ConvexError(invalid);
+  const holder = await ctx.db
+    .query("stakeholders")
+    .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.stakeholderKey))
+    .unique();
+  if (!holder) throw new ConvexError("Select an existing stakeholder.");
+  const previous = args.id ? await ctx.db.get(args.id) : null;
+  if (args.id && (!previous || previous.companyId !== c._id || previous.importId !== imp._id))
+    throw new ConvexError("Security not found.");
+  if (previous && previous.revision !== args.revision)
+    throw new ConvexError("This security changed. Refresh and try again.");
+  const old = previous?.data as Security | undefined;
+  const error = applySecurityToMetadata(metadata, s, old);
+  if (error) throw new ConvexError(error);
+  s.key = old?.key || crypto.randomUUID();
+  s.sourceSheet = old?.sourceSheet || "Recorded in Capy";
+  s.sourceRow = old?.sourceRow || 0;
+  if (previous)
+    await ctx.db.patch(previous._id, {
+      data: s,
+      stakeholderKey: s.stakeholderKey,
+      revision: previous.revision + 1,
+    });
+  else
+    await ctx.db.insert("securities", {
+      companyId: c._id,
+      importId: imp._id,
+      key: s.key,
+      stakeholderKey: s.stakeholderKey,
+      data: s,
+      revision: 1,
+    });
+  await ctx.db.patch(imp._id, { metadata });
+  await ctx.db.insert("activity", {
+    companyId: c._id,
+    actor: u.name || u.email,
+    description: `${previous ? "Updated" : "Recorded"} ${s.certificate}: ${args.reason}`,
+    ...withMeta({ before: old || null, after: s }, meta),
+  });
+  return s.key;
+}
 
 export const securityEvent = mutation({
   args: {
@@ -609,118 +615,77 @@ export const securityEvent = mutation({
     reason: v.string(),
     certificate: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const u = await member(ctx, args.companyId, true);
-    const c = await ctx.db.get(args.companyId),
-      record = await ctx.db.get(args.id);
-    if (
-      !c?.activeImport ||
-      !record ||
-      record.companyId !== c._id ||
-      record.importId !== c.activeImport
-    )
-      throw new ConvexError("Security not found.");
-    if (record.revision !== args.revision)
-      throw new ConvexError("This security changed. Refresh and try again.");
-    const qty = D(parse(decimalSchema, args.quantity));
-    const s = record.data as Security;
-    if (qty.lte(0) || qty.gt(s.outstanding))
-      throw new ConvexError("Enter a positive quantity no greater than the outstanding balance.");
-    if (!z.iso.date().safeParse(args.date).success || !args.reason.trim())
-      throw new ConvexError("Enter the event date and reason.");
-    const imp = await ctx.db.get(c.activeImport);
-    if (!imp) throw new ConvexError("Import missing.");
-    const meta = imp.metadata as EquityImport;
-    if (args.date < (s.balanceAsOf || meta.asOf) || (s.issuedOn && args.date < s.issuedOn))
-      throw new ConvexError(
-        "Record events on or after the imported snapshot and issue date. Use Edit to correct historical data.",
-      );
-    const before = { ...s, fields: { ...s.fields } };
-    const vestedAtEvent = projectedVested(s, meta.asOf, args.date);
-    if (vestedAtEvent !== null) s.vested = vestedAtEvent;
-    const plan = meta.plans.find((p) => p.name === s.planName),
-      cls = meta.classes.find((c) => c.name === s.className);
-    let createdKey: string | null = null;
-    if (args.event === "exercise") {
-      if (s.kind !== "option") throw new ConvexError("Only options can be exercised here.");
-      if (!args.certificate?.trim() || !cls || s.price === null)
-        throw new ConvexError(
-          "Enter a certificate label and ensure the option has an exercise price and share class.",
-        );
-      if (s.fields["Early Exercise"] !== "Yes" && (s.vested === null || qty.gt(s.vested)))
-        throw new ConvexError("Exercise exceeds the vested balance. Confirm vesting first.");
-      if (
-        cls.authorized !== null &&
-        cls.reportedOutstanding !== null &&
-        D(cls.reportedOutstanding).plus(qty).gt(cls.authorized)
-      )
-        throw new ConvexError("This exercise would exceed the share class authorization.");
-      const paid = qty.mul(s.price).toFixed();
-      createdKey = crypto.randomUUID();
-      const share: Security = {
-        ...s,
-        key: createdKey,
-        certificate: args.certificate,
-        kind: "share",
-        issued: qty.toFixed(),
-        outstanding: qty.toFixed(),
-        vested: s.vested === null ? null : Decimal.min(s.vested, qty).toFixed(),
-        capital: paid,
-        issuedOn: args.date,
-        balanceAsOf: args.date,
-        status: "Outstanding",
-        sourceSheet: "Recorded in Capy",
-        sourceRow: 0,
-        fields: {
-          Source: `Exercised from ${s.certificate}`,
-          "Exercise Date": args.date,
-          Comments: args.reason,
-        },
-      };
-      await ctx.db.insert("securities", {
-        companyId: c._id,
-        importId: imp._id,
-        key: share.key,
-        stakeholderKey: s.stakeholderKey,
-        data: share,
-        revision: 1,
-      });
-      s.fields["Exercised/Settled"] = D(s.fields["Exercised/Settled"]).plus(qty).toFixed();
-      s.fields["Dates of Exercise/Settlements"] = [
-        s.fields["Dates of Exercise/Settlements"],
-        `${qty.toFixed()} options exercised on ${args.date}`,
-      ]
-        .filter(Boolean)
-        .join("; ");
-      if (s.vested !== null) s.vested = Decimal.max(0, D(s.vested).minus(qty)).toFixed();
-      if (cls.capital !== null) cls.capital = D(cls.capital).plus(paid).toFixed();
-      if (cls.reportedOutstanding !== null)
-        cls.reportedOutstanding = D(cls.reportedOutstanding).plus(qty).toFixed();
-    } else {
-      const field = s.kind === "share" ? "Shares Cancelled" : "Amount Cancelled";
-      s.fields[field] = D(s.fields[field]).plus(qty).toFixed();
-      s.fields["Cancellation Date"] = args.date;
-      s.fields["Cancellation Reason"] = args.reason;
-      if (plan && s.kind !== "share") plan.available = D(plan.available).plus(qty).toFixed();
-      if (cls && s.kind === "share" && cls.reportedOutstanding !== null)
-        cls.reportedOutstanding = D(cls.reportedOutstanding).minus(qty).toFixed();
-      if (s.vested !== null)
-        s.vested = Decimal.min(s.vested, D(s.outstanding).minus(qty)).toFixed();
-    }
-    s.outstanding = D(s.outstanding).minus(qty).toFixed();
-    s.balanceAsOf = args.date;
-    if (D(s.outstanding).eq(0)) s.status = args.event === "exercise" ? "Exercised" : "Cancelled";
-    await ctx.db.patch(record._id, { data: s, revision: record.revision + 1 });
-    await ctx.db.patch(imp._id, { metadata: meta });
-    await ctx.db.insert("activity", {
-      companyId: c._id,
-      actor: u.name || u.email,
-      description: `Recorded ${args.event} of ${qty.toFixed()} from ${s.certificate} on ${args.date}: ${args.reason}`,
-      details: { before, after: s },
-    });
-    return createdKey;
-  },
+  handler: async (ctx, args) => await securityEventAs(ctx, await user(ctx), args),
 });
+export async function securityEventAs(
+  ctx: MutationCtx,
+  u: AuthUser,
+  args: {
+    companyId: Id<"companies">;
+    id: Id<"securities">;
+    revision: number;
+    event: "cancel" | "exercise";
+    quantity: string;
+    date: string;
+    reason: string;
+    certificate?: string;
+  },
+  meta?: ChangeMeta,
+) {
+  await memberAs(ctx, u, args.companyId, true);
+  const c = await ctx.db.get(args.companyId),
+    record = await ctx.db.get(args.id);
+  if (
+    !c?.activeImport ||
+    !record ||
+    record.companyId !== c._id ||
+    record.importId !== c.activeImport
+  )
+    throw new ConvexError("Security not found.");
+  if (record.revision !== args.revision)
+    throw new ConvexError("This security changed. Refresh and try again.");
+  const quantity = parse(decimalSchema, args.quantity);
+  const imp = await ctx.db.get(c.activeImport);
+  if (!imp) throw new ConvexError("Import missing.");
+  const metadata = imp.metadata as EquityImport,
+    s = record.data as Security;
+  const holder = await ctx.db
+    .query("stakeholders")
+    .withIndex("by_import_key", (q) => q.eq("importId", imp._id).eq("key", s.stakeholderKey))
+    .unique();
+  const result = applySecurityEvent(
+    metadata,
+    s,
+    {
+      event: args.event,
+      quantity,
+      date: args.date,
+      reason: args.reason,
+      certificate: args.certificate,
+      holder: holder?.data as Stakeholder | undefined,
+    },
+    crypto.randomUUID(),
+  );
+  if (!result.ok) throw new ConvexError(result.error);
+  if (result.share)
+    await ctx.db.insert("securities", {
+      companyId: c._id,
+      importId: imp._id,
+      key: result.share.key,
+      stakeholderKey: s.stakeholderKey,
+      data: result.share,
+      revision: 1,
+    });
+  await ctx.db.patch(record._id, { data: s, revision: record.revision + 1 });
+  await ctx.db.patch(imp._id, { metadata });
+  await ctx.db.insert("activity", {
+    companyId: c._id,
+    actor: u.name || u.email,
+    description: `Recorded ${args.event} of ${D(quantity).toFixed()} from ${s.certificate} on ${args.date}: ${args.reason}`,
+    ...withMeta({ before: result.before, after: s }, meta),
+  });
+  return result.share?.key ?? null;
+}
 
 export const createCompany = mutation({
   args: { name: v.string() },

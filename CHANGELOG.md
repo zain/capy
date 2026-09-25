@@ -4,6 +4,18 @@ User-visible changes and upgrade notes are recorded here. Release tags identify 
 
 ## Unreleased
 
+### Added
+
+- An MCP server at `/mcp`. Connect Claude, ChatGPT, Cursor, VS Code or another AI app to ask about ownership, stakeholders, grants, vesting, SAFEs, documents, board records and activity, model a priced round, and run a cap table health check. See [docs/MCP.md](docs/MCP.md).
+- Signing in from an AI app asks which companies it can see and whether it may draft changes. **Account → Connected apps** lists connected apps, and lets you edit or disconnect each one.
+- Connected apps can draft option and RSU grants, exercises, cancellations, stakeholder updates, board consents and round scenarios. Drafts change nothing until an admin applies them from the new **Drafted Changes** page, which shows the before and after, the ownership impact and warnings. The dashboard reminds you when drafts are waiting, and applied drafts are recorded in activity with the app that drafted them.
+- In apps that support MCP Apps, ownership, round models and drafted changes show as interactive views.
+- `llms.txt` and a guide for AI assistants at `/mcp.md`.
+
+### Upgrade notes
+
+- Self-hosted installations serve the MCP server at `<SITE_URL>/mcp` with no extra setup. `SITE_URL` on Convex must match the web app's origin. The new Convex cron runs hourly to remove expired tokens, links and drafts.
+
 ## 1.1.0 — 2026-09-24
 
 ### Added

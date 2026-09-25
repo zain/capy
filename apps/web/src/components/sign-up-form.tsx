@@ -4,16 +4,18 @@ import { Button } from "@capy/ui/components/button";
 import { Input } from "@capy/ui/components/input";
 import { Label } from "@capy/ui/components/label";
 import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import z from "zod";
 
 import { trackFunnel } from "@/lib/funnel";
 import { authClient } from "@/lib/auth-client";
+import { isConnectPath, resumeAuthorization } from "@/lib/connect";
 
 export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const [hasPreview, setHasPreview] = useState(false);
   useEffect(() => setHasPreview(hasPendingImport()), []);
+  const location = useLocation();
   const navigate = useNavigate({
     from: "/",
   });
@@ -33,9 +35,9 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
         {
           onSuccess: () => {
             trackFunnel("signup_completed");
-            navigate({
-              to: "/dashboard",
-            });
+            // Signing up while connecting an AI app continues to the consent page instead.
+            if (location.pathname === "/connect") resumeAuthorization();
+            else if (!isConnectPath(location.pathname)) navigate({ to: "/dashboard" });
             toast.success("Your account is ready");
           },
           onError: (error) => {
