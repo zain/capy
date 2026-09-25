@@ -4,6 +4,8 @@ We were Pulley customers too. Pulley shuts down December 8 and wants to send us 
 
 So we built Capy. It does one thing and it does it well: your cap table.
 
+![Capy's dashboard for Northwind Robotics, a made-up company: fully diluted shares, the option pool, ownership by group, and reminders.](/landing/dashboard.webp)
+
 Lightweight and DIY: issue a SAFE, grant options, or model your next round. Looks and feels just like Pulley.
 
 Or skip clicking and ask Claude by connecting our [MCP server](/ai) directly to your agent.

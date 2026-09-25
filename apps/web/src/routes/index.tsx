@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import copy from "../../../../copy.md?raw";
 import { PublicPage } from "@/components/public/page";
+import { Shot } from "@/components/public/shot";
 
 const title = copy.trim().split("\n")[0]!.replace(/^# /, "");
 const [landingBody, landingFooter] = copy.split("\n---\n");
@@ -79,7 +80,10 @@ export function LandingCopy({ source }: { source: string }) {
       );
     else if (line.startsWith("## ")) blocks.push(<h2 key={key}>{inline(line.slice(3))}</h2>);
     else if (line === "---") blocks.push(<hr key={key} />);
-    else blocks.push(<p key={key}>{inline(line)}</p>);
+    else if (/^!\[[^\]]*\]\([^)]+\)$/.test(line)) {
+      const [, alt, src] = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(line)!;
+      blocks.push(<Shot key={key} src={src!} alt={alt!} site="capyinc.com" fade />);
+    } else blocks.push(<p key={key}>{inline(line)}</p>);
   }
   closeList();
   return blocks;
