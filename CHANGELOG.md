@@ -2,7 +2,9 @@
 
 User-visible changes and upgrade notes are recorded here. Release tags identify source snapshots; they do not imply a security audit. Capy uses semantic versions. From 1.0.0, breaking changes to data, imports, exports or self-hosting configuration increase the major version and are called out here.
 
-## Unreleased
+## 1.2.0 — 2026-09-25
+
+Capy works inside Claude and other AI apps. Ask about your cap table in plain English, and let the app draft changes that an admin approves in Capy.
 
 ### Added
 
@@ -11,6 +13,14 @@ User-visible changes and upgrade notes are recorded here. Release tags identify 
 - Connected apps can draft option and RSU grants, exercises, cancellations, stakeholder updates, board consents and round scenarios. Drafts change nothing until an admin applies them from the new **Drafted Changes** page, which shows the before and after, the ownership impact and warnings. The dashboard reminds you when drafts are waiting, and applied drafts are recorded in activity with the app that drafted them.
 - In apps that support MCP Apps, ownership, round models and drafted changes show as interactive views.
 - `llms.txt` and a guide for AI assistants at `/mcp.md`.
+- A page at `/ai` that shows what asking Claude about a cap table looks like, with real screenshots from a made-up company.
+- The landing page shows the dashboard and a Claude conversation, and the Pulley import link is now a clear button.
+- Clear page titles for the new pages, including every company page.
+
+### Fixed
+
+- `draft_change` is always listed, so AI apps that cache their tool list can still draft after you turn drafting on. When drafting is off, it explains where to turn it on.
+- The Capy icon at the top of the landing page links home.
 
 ### Upgrade notes
 
