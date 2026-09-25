@@ -98,21 +98,29 @@ body {
   margin: 2.5em 0 3em;
   text-align: center;
 }
+/* Matches the product's primary button (.eq-primary). */
 .public-page .landing-cta a {
   display: inline-block;
-  padding: 0.85em 1.6em;
-  border: 1.5px solid currentColor;
-  border-radius: 10px;
-  font-size: 1.1em;
-  font-weight: 600;
+  padding: 14px 24px;
+  border: 1px solid #376751;
+  border-radius: 8px;
+  background: #376751;
+  color: #fff;
+  font:
+    550 16px/22px "Inter Variable",
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   text-decoration: none;
   transition: background-color 0.15s;
 }
 .public-page .landing-cta a:hover {
-  background: rgb(127 127 127 / 10%);
+  background: #2c5543;
 }
 .public-page .landing-cta a:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid #376751;
   outline-offset: 3px;
 }
 .landing-footer-note p {
