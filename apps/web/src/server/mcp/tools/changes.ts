@@ -168,64 +168,63 @@ function describe(p: Preview) {
 export function registerChangeTools(server: McpServer, capy: Capy) {
   const { convex } = capy;
 
-  if (capy.session.allowDrafts)
-    tool(
-      server,
-      "draft_change",
-      {
-        title: "Draft a change for review",
-        description:
-          "Drafts a cap table change for a company admin to review and apply in Capy: an option or RSU grant, an option exercise, a cancellation, a stakeholder update or new stakeholder, a draft board consent, or a saved round scenario. Capy validates it against the current cap table with the same rules as its editor and returns a preview (before/after values, fully diluted totals, ownership impact, warnings) and a review link. NOTHING CHANGES until an admin applies it in Capy. Tell the user it is drafted and share the review link; never say the change was made. Validation errors list every problem at once. Look up keys first (find_stakeholders, get_stakeholder, cap_table_summary for plan names). An option_grant needs an existing stakeholderKey: for someone not in Capy yet, draft a stakeholder_update without stakeholderKey, and ask an admin to apply it before drafting the grant.",
-        input: z.object({
-          companyId,
-          change: changeInput.describe("The change, by kind"),
-          rationale: z
-            .string()
-            .min(1)
-            .max(5000)
-            .describe(
-              "Why this change is being made and its source (e.g. the offer letter or board approval), shown to the reviewer",
-            ),
-        }),
-        output: o({
-          companyId: z.string(),
-          changeId: z.string(),
-          title: z.string(),
-          status,
-          preview,
-          expiresAt: z.string().nullable().describe("A pending draft expires after 7 days"),
-          reviewPath: url,
-          link: url.describe("Where an admin reviews and applies the change"),
-          asOf,
-        }),
-        annotations: {
-          readOnlyHint: false,
-          destructiveHint: false,
-          idempotentHint: false,
-          openWorldHint: false,
-        },
-        widget: CHANGE_WIDGET,
-      },
-      async (a) => {
-        const id = capy.companyId(a.companyId);
-        const r = capy.absolute(
-          await convex.mutation(api.mcp.draftChange, {
-            companyId: id,
-            input: a.change,
-            rationale: a.rationale,
-          }),
-        );
-        return {
-          data: { companyId: id, ...r, preview: normalize(r.preview) },
-          text: lines(
-            `Drafted for review. Nothing on the cap table has changed yet: an admin must review and apply it in Capy.`,
-            `**${r.title}** (changeId ${r.changeId})`,
-            describe(normalize(r.preview)),
-            `Review and apply: ${r.link}${r.expiresAt ? ` (expires ${r.expiresAt.slice(0, 10)})` : ""}`,
+  tool(
+    server,
+    "draft_change",
+    {
+      title: "Draft a change for review",
+      description:
+        "Drafts a cap table change for a company admin to review and apply in Capy: an option or RSU grant, an option exercise, a cancellation, a stakeholder update or new stakeholder, a draft board consent, or a saved round scenario. Capy validates it against the current cap table with the same rules as its editor and returns a preview (before/after values, fully diluted totals, ownership impact, warnings) and a review link. NOTHING CHANGES until an admin applies it in Capy. Tell the user it is drafted and share the review link; never say the change was made. Validation errors list every problem at once. Look up keys first (find_stakeholders, get_stakeholder, cap_table_summary for plan names). An option_grant needs an existing stakeholderKey: for someone not in Capy yet, draft a stakeholder_update without stakeholderKey, and ask an admin to apply it before drafting the grant. Drafting must be turned on for this connection and the user must be an admin (list_companies shows canDraft); if it is off, tell the user to turn it on in Capy under Account → Connected apps.",
+      input: z.object({
+        companyId,
+        change: changeInput.describe("The change, by kind"),
+        rationale: z
+          .string()
+          .min(1)
+          .max(5000)
+          .describe(
+            "Why this change is being made and its source (e.g. the offer letter or board approval), shown to the reviewer",
           ),
-        };
+      }),
+      output: o({
+        companyId: z.string(),
+        changeId: z.string(),
+        title: z.string(),
+        status,
+        preview,
+        expiresAt: z.string().nullable().describe("A pending draft expires after 7 days"),
+        reviewPath: url,
+        link: url.describe("Where an admin reviews and applies the change"),
+        asOf,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
       },
-    );
+      widget: CHANGE_WIDGET,
+    },
+    async (a) => {
+      const id = capy.companyId(a.companyId);
+      const r = capy.absolute(
+        await convex.mutation(api.mcp.draftChange, {
+          companyId: id,
+          input: a.change,
+          rationale: a.rationale,
+        }),
+      );
+      return {
+        data: { companyId: id, ...r, preview: normalize(r.preview) },
+        text: lines(
+          `Drafted for review. Nothing on the cap table has changed yet: an admin must review and apply it in Capy.`,
+          `**${r.title}** (changeId ${r.changeId})`,
+          describe(normalize(r.preview)),
+          `Review and apply: ${r.link}${r.expiresAt ? ` (expires ${r.expiresAt.slice(0, 10)})` : ""}`,
+        ),
+      };
+    },
+  );
 
   tool(
     server,
