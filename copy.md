@@ -6,6 +6,8 @@ So we built Capy. It does one thing and it does it well: your cap table.
 
 Lightweight and DIY: issue a SAFE, grant options, or model your next round. Looks and feels just like Pulley.
 
+Or skip clicking and ask Claude by connecting our [MCP server](/ai) directly to your agent.
+
 It’s open source, so you can self-host and own your data. Export your cap table to Excel any time.
 
 We have clear pricing that keeps the project alive, the code is on GitHub, and our roadmap is public. If you want to contribute, PRs are welcome.

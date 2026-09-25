@@ -65,7 +65,15 @@ export function LandingCopy({ source }: { source: string }) {
     if (line.startsWith("# "))
       blocks.push(
         <h1 className="landing-title" key={key}>
-          <img className="landing-brand-icon" src="/favicon-32.png" width="20" height="20" alt="" />
+          <a href="/" className="landing-brand" aria-label="Capy home">
+            <img
+              className="landing-brand-icon"
+              src="/favicon-32.png"
+              width="20"
+              height="20"
+              alt=""
+            />
+          </a>
           <span>{inline(line.slice(2))}</span>
         </h1>,
       );

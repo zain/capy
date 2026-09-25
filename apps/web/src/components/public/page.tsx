@@ -7,7 +7,7 @@ export function PublicPage({
   analytics,
 }: {
   children: ReactNode;
-  variant?: "landing" | "legal" | "docs" | "success" | "not-found";
+  variant?: "landing" | "legal" | "docs" | "story" | "success" | "not-found";
   analytics?: boolean | string;
 }) {
   const trackReservation = (event: MouseEvent<HTMLElement>) => {
