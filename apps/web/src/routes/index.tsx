@@ -36,17 +36,21 @@ export const Route = createFileRoute("/")({
 
 // copy.md remains the authored landing page; React escapes all literal text.
 function inline(text: string): ReactNode[] {
-  return text.split(/(\[[^\]]+\]\([^)]+\))/g).map((part, index) => {
+  return text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g).map((part, index) => {
     const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);
-    return link ? (
-      <a key={index} href={link[2]}>
-        {link[1]}
-      </a>
-    ) : (
-      part
-    );
+    if (link)
+      return (
+        <a key={index} href={link[2]}>
+          {link[1]}
+        </a>
+      );
+    const bold = /^\*\*([^*]+)\*\*$/.exec(part);
+    return bold ? <strong key={index}>{bold[1]}</strong> : part;
   });
 }
+const image = /^!\[([^\]]*)\]\((\S+)(?: "([^"]*)")?\)$/;
+// A paragraph that is only a link ending in an arrow is the page's call to action.
+const callToAction = /^\[[^\]]+ →\]\([^)]+\)$/;
 export function LandingCopy({ source }: { source: string }) {
   const blocks: ReactNode[] = [];
   let items: ReactNode[] = [];
@@ -80,10 +84,25 @@ export function LandingCopy({ source }: { source: string }) {
       );
     else if (line.startsWith("## ")) blocks.push(<h2 key={key}>{inline(line.slice(3))}</h2>);
     else if (line === "---") blocks.push(<hr key={key} />);
-    else if (/^!\[[^\]]*\]\([^)]+\)$/.test(line)) {
-      const [, alt, src] = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(line)!;
-      blocks.push(<Shot key={key} src={src!} alt={alt!} site="capyinc.com" fade />);
-    } else blocks.push(<p key={key}>{inline(line)}</p>);
+    else if (image.test(line)) {
+      // The optional title names the site in the frame, plus "fade" for a screenshot cut mid-page.
+      const [, alt, src, title = ""] = image.exec(line)!;
+      blocks.push(
+        <Shot
+          key={key}
+          src={src!}
+          alt={alt!}
+          site={title.includes("claude.ai") ? "claude.ai" : "capyinc.com"}
+          fade={title.includes("fade")}
+        />,
+      );
+    } else if (callToAction.test(line))
+      blocks.push(
+        <p className="landing-cta" key={key}>
+          {inline(line)}
+        </p>,
+      );
+    else blocks.push(<p key={key}>{inline(line)}</p>);
   }
   closeList();
   return blocks;
