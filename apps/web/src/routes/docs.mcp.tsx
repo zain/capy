@@ -13,7 +13,7 @@ const href = (h: string) => (/^[A-Za-z_]+\.md(#.*)?$/.test(h) ? repoDocs + h : h
 export const Route = createFileRoute("/docs/mcp")({
   head: () => ({
     meta: [
-      { title: `${title} – Capy` },
+      { title: "MCP setup guide – Capy" },
       { name: "description", content: description },
       { property: "og:title", content: title },
       { property: "og:description", content: description },

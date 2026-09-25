@@ -2,14 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { PublicPage } from "@/components/public/page";
 
-const title = "Capy for Claude - ask your cap table anything";
+const title = "Ask Claude about your cap table";
 const description =
   "Connect Capy to Claude and ask about your cap table in plain English. Capy does the math. Nothing changes until you approve it.";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
     meta: [
-      { title },
+      { title: `${title} – Capy` },
       { name: "description", content: description },
       { property: "og:type", content: "article" },
       { property: "og:url", content: "https://capyinc.com/ai" },
