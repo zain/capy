@@ -57,6 +57,18 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_company_user", ["companyId", "userId"]),
+  // Links that give admin access to whoever signs in with the invited email.
+  adminInvitations: defineTable({
+    companyId: v.id("companies"),
+    email: v.string(),
+    token: v.string(),
+    invitedBy: v.string(),
+    expiresAt: v.number(),
+    revoked: v.boolean(),
+    acceptedBy: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_company", ["companyId"]),
   imports: defineTable({
     companyId: v.id("companies"),
     filename: v.string(),

@@ -54,3 +54,9 @@ To bring an already loaded company up to date with a newer snapshot, run `update
 cd packages/backend
 bunx convex run --prod operator:shareCompany '{"companyId":"<id>","email":"founder@example.com","owner":true}'
 ```
+
+To add an admin who may not have signed up yet, make an invitation link and send it to them. Only an account with that email can accept it, and it expires after seven days. Admins can also invite admins themselves from **Company → Admins**.
+
+```sh
+bunx convex run --prod operator:inviteAdmin '{"companyId":"<id>","email":"cfo@example.com","invitedBy":"Jane Founder"}'
+```

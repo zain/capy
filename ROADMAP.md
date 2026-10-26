@@ -11,7 +11,7 @@ This is the project's working direction, not a delivery schedule. [Issues](https
 - **AI access for advisors and employees:** let the MCP server serve portal users their own holdings, and let lawyers and advisors connect with scoped, read-only access.
 - **Account recovery and verification:** integrate a mail provider and test the full recovery flow before exposing it in the UI.
 - **More import coverage:** expand synthetic regression fixtures for historical Pulley exports, restricted-stock mappings, custom schedules, and reconciliation failures.
-- **Administrator collaboration:** explicit invitations, roles, and revocation with cross-account authorization tests.
+- **Administrator collaboration:** emailed invitations, a viewer role that can be granted from the app, and cross-account authorization tests. Admins can already invite admins by link.
 - **Upgrade and backup confidence:** documented restore drills and migration checks for self-hosted deployments.
 
 ## Planned

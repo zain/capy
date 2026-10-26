@@ -10,7 +10,7 @@ import z from "zod";
 
 import { trackFunnel } from "@/lib/funnel";
 import { authClient } from "@/lib/auth-client";
-import { isConnectPath, resumeAuthorization } from "@/lib/connect";
+import { isConnectPath, isInvitationPath, resumeAuthorization } from "@/lib/connect";
 
 export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const [hasPreview, setHasPreview] = useState(false);
@@ -36,8 +36,10 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           onSuccess: () => {
             trackFunnel("signup_completed");
             // Signing up while connecting an AI app continues to the consent page instead.
+            // Invitation links stay put so the new account can accept them.
             if (location.pathname === "/connect") resumeAuthorization();
-            else if (!isConnectPath(location.pathname)) navigate({ to: "/dashboard" });
+            else if (!isConnectPath(location.pathname) && !isInvitationPath(location.pathname))
+              navigate({ to: "/dashboard" });
             toast.success("Your account is ready");
           },
           onError: (error) => {

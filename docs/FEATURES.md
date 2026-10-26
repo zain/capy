@@ -39,7 +39,7 @@ Files belong to a company data room. Fine-grained document-folder permissions an
 
 ## Access and account boundaries
 
-The importing account owns the company. There is no administrator-team invitation/settings UI, and source-system administrators and permissions are not imported automatically.
+The importing account owns the company. Admins can invite other admins from **Company → Admins**: Capy makes a link to copy and send, since it doesn't email invitations yet. Only an account with the invited email can accept the link, and it does not need to exist when the invitation is made. Unused links expire after seven days, and a new invitation to the same email revokes the old link. Admins can revoke invitations and remove any admin except the owner. Viewer access can't be granted from the app, and source-system administrators and permissions are not imported automatically.
 
 A stakeholder invitation can be claimed once, expires after seven days if unused, and grants access until revoked. The portal shows that stakeholder's holdings, not the full cap table or company data room. Knowing a stakeholder's email is not sufficient for access.
 

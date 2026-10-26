@@ -41,6 +41,7 @@ import { clearPendingImport } from "@/lib/pending-import";
 import { DataTable, Empty, Field, Modal } from "./ui";
 import { downloadCapTable } from "../../lib/export-workbook";
 import { PortalManager, MyPortals } from "./portal";
+import { AdminManager } from "./team";
 import type { Column } from "./ui";
 import { ConfigurationForm, SecurityActions, SecurityForm } from "./workflows";
 import { ContactImport } from "./contact-import";
@@ -117,6 +118,7 @@ const groups = [
       ["Templates", "templates"],
       ["Data Room", "data_room"],
       ["Reports", "report_generator"],
+      ["Admins", "admins"],
       ["Recent Activity", "auditLog"],
       ["Import Report", "imports"],
       ["Form Documents", "form_documents"],
@@ -148,6 +150,7 @@ export const pageTitles: Record<string, string> = {
   stakeholders: "Stakeholders",
   profile: "Company Profile",
   auditLog: "Recent Activity",
+  admins: "Admins",
   imports: "Import Report",
   import: "Import Cap Table",
   calculator: "Share Calculator",
@@ -245,7 +248,7 @@ function Topbar({ companyId }: { companyId?: string }) {
             <div className="eq-popover eq-account-menu">
               <div className="eq-account-identity">
                 <strong>{user?.email}</strong>
-                {companies?.find((c) => c?._id === companyId)?.ownerId === user?._id && user && (
+                {companies?.find((c) => c?._id === companyId)?.role === "admin" && (
                   <span>Admin</span>
                 )}
               </div>
@@ -522,6 +525,8 @@ function CompanyPage({ path }: { path: string }) {
       return <HireAndRetain />;
     case "stakeholder_portal":
       return <PortalManager />;
+    case "admins":
+      return <AdminManager />;
     case "securities_status":
       return <SecuritiesStatus />;
     case "certificates":

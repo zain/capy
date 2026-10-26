@@ -525,6 +525,16 @@
   grid-template-columns: 1fr 1fr;
   gap: 0 20px;
 }
+.eq-invite-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 8px 0 24px;
+}
+.eq-invite-form .eq-field {
+  flex: 0 1 360px;
+  margin-bottom: 0;
+}
 .eq-form-actions {
   display: flex;
   justify-content: flex-end;
