@@ -49,7 +49,7 @@ Hosted billing additionally uses `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE_MODE`, an
 
 ## Dependency overrides
 
-The root manifest pins patched Hono and UUID resolutions to avoid older transitive/peer versions. Better Auth stays within the Convex adapter's supported 1.6 range. When changing these pins, check the consumer API and run import/export tests and `bun audit`; do not remove an override just to simplify the manifest.
+The root manifest pins patched Hono and UUID resolutions to avoid older transitive/peer versions. It also pins `miniflare` so `@cloudflare/vite-plugin`, which pins an older miniflare with a vulnerable undici, uses the same miniflare as wrangler; remove that pin once the plugin catches up. Better Auth stays within the Convex adapter's supported 1.6 range. When changing these pins, check the consumer API and run import/export tests and `bun audit`; do not remove an override just to simplify the manifest.
 
 The Bun patch in `patches/` fixes the Convex adapter's React client types for Better Auth 1.6.22 and later ([upstream issue #420](https://github.com/get-convex/better-auth/issues/420)). It uses the concrete Convex/cross-domain plugin types rather than a generic plugin union that makes session data infer as `never`. The patch changes types only, not authentication behavior. Remove it when the adapter ships a compatible fix; rerun the build and verify sign-in/session refresh when updating either authentication package.
 
