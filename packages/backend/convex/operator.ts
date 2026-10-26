@@ -14,6 +14,7 @@ import {
   startImportAs,
   type AuthUser,
 } from "./equity";
+import { createInvitation } from "./team";
 
 const importedBy = "Capy import team";
 
@@ -209,6 +210,16 @@ export const mergeFields = internalMutation({
       actor: importedBy,
       description: `Added details from Pulley to ${changed} records`,
     });
+  },
+});
+
+/** Makes an admin invitation link for someone who may not have a Capy account yet. */
+export const inviteAdmin = internalMutation({
+  args: { companyId: v.id("companies"), email: v.string(), invitedBy: v.optional(v.string()) },
+  handler: async (ctx, { companyId, email, invitedBy }) => {
+    if (!(await ctx.db.get(companyId))) throw new ConvexError("No such company.");
+    const token = await createInvitation(ctx, companyId, email, invitedBy || "Capy support");
+    return `${process.env.SITE_URL}/invite/${token}`;
   },
 });
 

@@ -95,7 +95,12 @@ export const companies = query({
       .query("memberships")
       .withIndex("by_user", (q) => q.eq("userId", u._id))
       .collect();
-    const companies = await Promise.all(memberships.map((m) => ctx.db.get(m.companyId)));
+    const companies = await Promise.all(
+      memberships.map(async (m) => {
+        const c = await ctx.db.get(m.companyId);
+        return c && { ...c, role: m.role };
+      }),
+    );
     return companies.filter((c) => c?.activeImport);
   },
 });

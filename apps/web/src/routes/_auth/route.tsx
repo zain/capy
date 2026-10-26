@@ -7,7 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Toaster } from "@capy/ui/components/sonner";
 import { authClient } from "@/lib/auth-client";
 import { getToken } from "@/lib/auth-server";
-import { isConnectPath } from "@/lib/connect";
+import { isConnectPath, isInvitationPath } from "@/lib/connect";
 import Header from "@/components/header";
 import "@/components/equity/equity.css";
 
@@ -29,7 +29,9 @@ function AuthLayout() {
   const context = Route.useRouteContext();
   const location = useLocation();
   const [mode, setMode] = useState<boolean | null>(null);
-  const showSignIn = mode ?? location.pathname !== "/signup";
+  // Admin invitees usually don't have an account yet.
+  const showSignIn =
+    mode ?? (location.pathname !== "/signup" && !location.pathname.startsWith("/invite/"));
 
   return (
     <ConvexBetterAuthProvider
@@ -48,6 +50,11 @@ function AuthLayout() {
             {isConnectPath(location.pathname) && (
               <p className="eq-callout eq-connect-note">
                 Sign in or create an account to connect your AI app to Capy.
+              </p>
+            )}
+            {isInvitationPath(location.pathname) && (
+              <p className="eq-callout eq-connect-note">
+                Sign in or create an account to accept your invitation.
               </p>
             )}
             {showSignIn ? (

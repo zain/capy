@@ -24,6 +24,8 @@ import type * as privateData from "../privateData.js";
 import type * as pulleyAccess from "../pulleyAccess.js";
 import type * as records from "../records.js";
 import type * as stripe from "../stripe.js";
+import type * as team from "../team.js";
+import type * as teamRules from "../teamRules.js";
 
 import type {
   ApiFromModules,
@@ -48,6 +50,8 @@ declare const fullApi: ApiFromModules<{
   pulleyAccess: typeof pulleyAccess;
   records: typeof records;
   stripe: typeof stripe;
+  team: typeof team;
+  teamRules: typeof teamRules;
 }>;
 
 /**
