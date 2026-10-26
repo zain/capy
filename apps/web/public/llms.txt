@@ -14,6 +14,7 @@ Capy has a remote MCP server at https://capyinc.com/mcp (self-hosted installatio
 - [README](https://github.com/zain/capy/blob/main/README.md): what Capy does, running it locally and the architecture
 - [Supported workflows and boundaries](https://github.com/zain/capy/blob/main/docs/FEATURES.md): what is and isn't implemented
 - [Pulley import guide](https://github.com/zain/capy/blob/main/docs/PULLEY_IMPORT.md)
+- [Pulley alternatives after the shutdown](https://capyinc.com/pulley-alternative): dates, what to export, migration offers and how Capy compares
 - [Self-hosting](https://github.com/zain/capy/blob/main/docs/SELF_HOSTING.md)
 - [Architecture](https://github.com/zain/capy/blob/main/docs/ARCHITECTURE.md)
 

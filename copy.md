@@ -18,6 +18,8 @@ One plan: **$600/yr, unlimited stakeholders, no contracts**. Free until Dec 8.
 
 [Import your Pulley cap table in one click →](/preview)
 
+Comparing options? See [Pulley alternatives after the shutdown](/pulley-alternative).
+
 ## Who's behind it
 
 - [Zain](https://linkedin.com/in/zainm/): 2x YC founder, Django core contributor
