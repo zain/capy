@@ -295,7 +295,7 @@ export function AccountHome() {
       <Topbar />
       <BillingNotice />
       <MyPortals />
-      {companies && companies.length === 0 && <StartWithoutImport />}
+      {companies && <StartWithoutImport first={companies.length === 0} />}
       {!!companies?.length && (
         <section className="eq-company-cards">
           <h2>Your companies</h2>

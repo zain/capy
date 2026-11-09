@@ -6,7 +6,21 @@ import { authClient } from "@/lib/auth-client";
 import { Field, Modal } from "./ui";
 import { clearPendingImport } from "@/lib/pending-import";
 import { trackFunnel } from "@/lib/funnel";
-export function StartWithoutImport() {
+const START_COPY = {
+  first: {
+    title: "Your account is ready",
+    body: "Import your cap table below, or start with an empty company and add your records later.",
+    button: "Continue without an import",
+  },
+  more: {
+    title: "Add a company",
+    body: "Start another empty company, or import a cap table below.",
+    button: "New company",
+  },
+};
+
+export function StartWithoutImport({ first = true }: { first?: boolean }) {
+  const copy = START_COPY[first ? "first" : "more"];
   const [open, setOpen] = useState(false),
     [name, setName] = useState(""),
     [yourName, setYourName] = useState(""),
@@ -16,10 +30,10 @@ export function StartWithoutImport() {
   const navigate = useNavigate();
   return (
     <section className="eq-start-later">
-      <h2>Your account is ready</h2>
-      <p>Import your cap table below, or start with an empty company and add your records later.</p>
+      <h2>{copy.title}</h2>
+      <p>{copy.body}</p>
       <button className="eq-button" onClick={() => setOpen(true)}>
-        Continue without an import
+        {copy.button}
       </button>
       {open && (
         <Modal title="Set up your company" onClose={() => setOpen(false)}>

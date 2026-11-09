@@ -2,6 +2,12 @@
 
 User-visible changes and upgrade notes are recorded here. Release tags identify source snapshots; they do not imply a security audit. Capy uses semantic versions. From 1.0.0, breaking changes to data, imports, exports or self-hosting configuration increase the major version and are called out here.
 
+## Unreleased
+
+### Fixed
+
+- The account home now offers **New company** when you already have companies. Before, an empty company could only be started from the first-run screen.
+
 ## 1.2.0 — 2026-09-25
 
 Capy works inside Claude and other AI apps. Ask about your cap table in plain English, and let the app draft changes that an admin approves in Capy.
