@@ -2,6 +2,12 @@
 
 User-visible changes and upgrade notes are recorded here. Release tags identify source snapshots; they do not imply a security audit. Capy uses semantic versions. From 1.0.0, breaking changes to data, imports, exports or self-hosting configuration increase the major version and are called out here.
 
+## Unreleased
+
+### Changed
+
+- Self-hosted installs can set `CAPY_SELF_HOSTED = "true"` in the Worker `[vars]` (see `wrangler.self-hosted.toml.example`). `/` then opens the dashboard, or sign-up when signed out, instead of the capyinc.com landing page. Hosted behavior is unchanged.
+
 ## 1.2.0 — 2026-09-25
 
 Capy works inside Claude and other AI apps. Ask about your cap table in plain English, and let the app draft changes that an admin approves in Capy.

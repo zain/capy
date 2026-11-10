@@ -266,9 +266,9 @@ function Topbar({ companyId }: { companyId?: string }) {
               </button>
               <button
                 onClick={async () => {
-                  // Leave authenticated queries before ending their session.
+                  // Leave authenticated queries before ending their session. Not "/": self-hosted installs redirect it back into the app.
                   await clearPendingImport().catch(() => {});
-                  await navigate({ to: "/" });
+                  await navigate({ to: "/privacy" });
                   const result = await authClient.signOut();
                   if (result.error) {
                     toast.error("Could not sign out. Please try again.");
