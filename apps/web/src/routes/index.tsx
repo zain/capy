@@ -1,14 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import copy from "../../../../copy.md?raw";
 import { PublicPage } from "@/components/public/page";
 import { Shot } from "@/components/public/shot";
+import { selfHostedHome } from "@/server/home";
 
 const title = copy.trim().split("\n")[0]!.replace(/^# /, "");
 const [landingBody, landingFooter] = copy.split("\n---\n");
 const description =
   "We were Pulley customers too. Capy does one thing well: your cap table. Open source, exportable, $600/yr, free until Dec 8.";
 export const Route = createFileRoute("/")({
+  beforeLoad: async () => {
+    const to = await selfHostedHome();
+    if (to) throw redirect({ to });
+  },
   head: () => ({
     meta: [
       { title },
