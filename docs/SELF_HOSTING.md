@@ -2,7 +2,7 @@
 
 The supported path is the Capy web app on **your Cloudflare account** and a backend project on **your Convex account**. You control those deployments and their data. No Capy subscription or Stripe account is needed when `CAPY_SELF_HOSTED=true`.
 
-This is not a standalone Docker/SQLite application. Running the Convex server on your own machines has not yet been validated with this repository's deployment tooling.
+This is not a standalone Docker/SQLite application. You can also run the open-source Convex backend on your own server. `bun run deploy` does not support that setup, so it needs the manual steps in [Running the Convex backend yourself](#running-the-convex-backend-yourself).
 
 ## 1. Start with a working development installation
 
@@ -61,6 +61,55 @@ Review the target shown by Convex before confirming. The command selects that pr
 - If using AI apps, connect the MCP Inspector (`npx @modelcontextprotocol/inspector`) or Claude Code to `https://your-capy.example.com/mcp`, approve the consent screen, and call `list_companies`. See [MCP.md](MCP.md).
 
 Current account email verification and password recovery delivery are not implemented. Review [SECURITY.md](../SECURITY.md) and [product boundaries](FEATURES.md) before deciding who can use your installation.
+
+## Running the Convex backend yourself
+
+Use this instead of steps 3 and 4 when you want the data on your own server rather than in a Convex cloud project. It has been tested with the `ghcr.io/convex/convex-backend` Docker image behind an HTTPS reverse proxy. The examples use `api.capy.example.com` for the Convex API and `site.capy.example.com` for Convex HTTP actions (auth).
+
+1. Run the backend. Both origins must be the public HTTPS URLs that your proxy serves:
+
+   ```yaml
+   services:
+     backend:
+       image: ghcr.io/convex/convex-backend:latest
+       ports:
+         - "127.0.0.1:3210:3210" # proxy https://api.capy.example.com here
+         - "127.0.0.1:3211:3211" # proxy https://site.capy.example.com here
+       volumes:
+         - data:/convex/data
+       environment:
+         - CONVEX_CLOUD_ORIGIN=https://api.capy.example.com
+         - CONVEX_SITE_ORIGIN=https://site.capy.example.com
+         - DISABLE_BEACON=true
+   volumes:
+     data:
+   ```
+
+   Generate an admin key with `docker compose exec backend ./generate_admin_key.sh`.
+
+2. Point the Convex CLI at the backend. From `packages/backend`, set the variables without `--prod`, because a self-hosted backend has a single deployment:
+
+   ```sh
+   export CONVEX_SELF_HOSTED_URL=https://api.capy.example.com
+   export CONVEX_SELF_HOSTED_ADMIN_KEY=...   # from generate_admin_key.sh
+   bunx convex env set SITE_URL https://capy.example.com
+   bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -hex 32)"
+   bunx convex env set CAPY_SELF_HOSTED true
+   bunx convex deploy -y
+   ```
+
+3. Build the web app against the backend. `bun run deploy` cannot do this step, because `scripts/build-production.ts` only accepts `*.convex.cloud` URLs. Write the ignored `apps/web/.env.production.local` yourself:
+
+   ```sh
+   VITE_CONVEX_URL=https://api.capy.example.com
+   VITE_CONVEX_SITE_URL=https://site.capy.example.com
+   ```
+
+   Run `bun run build` from `apps/web`. Then deploy with `bun run deploy:web` from the repository root, as in step 4.
+
+4. Run the smoke checks in step 5.
+
+For backups, `bunx convex export` and `bunx convex import` work against a self-hosted backend when the same two environment variables are set. Do not delete the Docker volume to reset data: it also holds the deployment's admin keys and environment variables.
 
 ## Analytics, links, and branding
 
